@@ -4,6 +4,7 @@
     "slug": "shwshawaty-asya1",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
