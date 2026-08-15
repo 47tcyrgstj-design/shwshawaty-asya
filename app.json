@@ -6,13 +6,25 @@
     "orientation": "portrait",
     "icon": "./icon.png",
     "userInterfaceStyle": "dark",
+
+    "web": {
+      "output": "static",
+      "favicon": "./icon.png"
+    },
+
+    "experiments": {
+      "baseUrl": "/shwshawaty-asya"
+    },
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.asya.shwshawaty"
     },
+
     "android": {
       "package": "com.asya.shwshawaty"
     },
+
     "extra": {
       "eas": {
         "projectId": "5866a723-918e-413e-91c8-6b83fe1555c5"
