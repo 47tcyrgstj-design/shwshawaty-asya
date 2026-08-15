@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+const ADMIN_PASSWORD = "tt69fu35T";
+
 const initialProducts = [
   {
     id: "1",
@@ -66,6 +68,10 @@ export default function App() {
 
   const [products, setProducts] = useState(initialProducts);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [password, setPassword] = useState("");
+
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("");
@@ -84,16 +90,19 @@ export default function App() {
         setProducts(JSON.parse(saved));
       }
     } catch (error) {
-      console.log("Load products error:", error);
+      console.log(error);
     }
   };
 
   const saveProducts = async (list) => {
     try {
-      await AsyncStorage.setItem("asya_products", JSON.stringify(list));
+      await AsyncStorage.setItem(
+        "asya_products",
+        JSON.stringify(list)
+      );
       setProducts(list);
     } catch (error) {
-      console.log("Save products error:", error);
+      console.log(error);
     }
   };
 
@@ -107,6 +116,23 @@ export default function App() {
     [products, category, query]
   );
 
+  const loginAdmin = () => {
+    if (password === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      setShowLogin(false);
+      setPassword("");
+      Alert.alert("سەرکەوتوو بوو", "بەشی Admin کرایەوە.");
+    } else {
+      Alert.alert("هەڵە", "وشەی نهێنی هەڵەیە.");
+    }
+  };
+
+  const logoutAdmin = () => {
+    setIsAdmin(false);
+    setShowAdd(false);
+    Alert.alert("چوویتە دەرەوە", "لە بەشی Admin دەرچوویت.");
+  };
+
   const addToCart = (p) => {
     setCart((c) => [...c, p]);
     Alert.alert("زیادکرا", `${p.name} خرایە ناو سەبەتەکە.`);
@@ -119,12 +145,12 @@ export default function App() {
     }
 
     if (!newPrice.trim() || isNaN(Number(newPrice))) {
-      Alert.alert("هەڵە", "نرخی بەرهەم بە ژمارە بنووسە.");
+      Alert.alert("هەڵە", "نرخ بە ژمارە بنووسە.");
       return;
     }
 
     if (!newImage.trim()) {
-      Alert.alert("هەڵە", "لینکی وێنەی بەرهەم بنووسە.");
+      Alert.alert("هەڵە", "لینکی وێنە بنووسە.");
       return;
     }
 
@@ -136,9 +162,7 @@ export default function App() {
       image: newImage.trim(),
     };
 
-    const updated = [product, ...products];
-
-    await saveProducts(updated);
+    await saveProducts([product, ...products]);
 
     setNewName("");
     setNewPrice("");
@@ -146,20 +170,26 @@ export default function App() {
     setNewImage("");
     setShowAdd(false);
 
-    Alert.alert("سەرکەوتوو بوو", "بەرهەمەکە زیاد کرا.");
+    Alert.alert("سەرکەوتوو بوو", "بەرهەم زیاد کرا.");
   };
 
-  const deleteProduct = async (product) => {
+  const deleteProduct = (product) => {
     Alert.alert(
       "سڕینەوە",
       `دڵنیایت دەتەوێت "${product.name}" بسڕیتەوە؟`,
       [
-        { text: "نەخێر", style: "cancel" },
+        {
+          text: "نەخێر",
+          style: "cancel",
+        },
         {
           text: "بەڵێ، بیسڕەوە",
           style: "destructive",
           onPress: async () => {
-            const updated = products.filter((p) => p.id !== product.id);
+            const updated = products.filter(
+              (p) => p.id !== product.id
+            );
+
             await saveProducts(updated);
 
             if (selected?.id === product.id) {
@@ -171,37 +201,94 @@ export default function App() {
     );
   };
 
-  if (showAdd) {
+  if (showLogin) {
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView>
-          <TouchableOpacity onPress={() => setShowAdd(false)}>
+          <TouchableOpacity
+            onPress={() => {
+              setShowLogin(false);
+              setPassword("");
+            }}
+          >
             <Text style={s.back}>‹ گەڕانەوە</Text>
           </TouchableOpacity>
 
           <View style={s.pad}>
-            <Text style={s.pageTitle}>➕ زیادکردنی بەرهەم</Text>
+            <Text style={s.pageTitle}>
+              🔐 چوونەژوورەوەی Admin
+            </Text>
 
-            <Text style={s.label}>ناوی بەرهەم</Text>
+            <Text style={s.label}>
+              وشەی نهێنی
+            </Text>
+
             <TextInput
-              value={newName}
-              onChangeText={setNewName}
-              placeholder="بۆ نموونە: سێتی چای 18 پارچە"
-              placeholderTextColor="#888"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="وشەی نهێنی بنووسە"
+              placeholderTextColor="#777"
+              secureTextEntry
               style={s.input}
             />
 
-            <Text style={s.label}>نرخ بە دینار</Text>
+            <TouchableOpacity
+              style={s.goldBtn}
+              onPress={loginAdmin}
+            >
+              <Text style={s.goldText}>
+                🔓 چوونەژوورەوە
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (showAdd && isAdmin) {
+    return (
+      <SafeAreaView style={s.safe}>
+        <ScrollView>
+          <TouchableOpacity
+            onPress={() => setShowAdd(false)}
+          >
+            <Text style={s.back}>‹ گەڕانەوە</Text>
+          </TouchableOpacity>
+
+          <View style={s.pad}>
+            <Text style={s.pageTitle}>
+              ➕ زیادکردنی بەرهەم
+            </Text>
+
+            <Text style={s.label}>
+              ناوی بەرهەم
+            </Text>
+
+            <TextInput
+              value={newName}
+              onChangeText={setNewName}
+              placeholder="بۆ نموونە: سێتی چای"
+              placeholderTextColor="#777"
+              style={s.input}
+            />
+
+            <Text style={s.label}>
+              نرخ بە دینار
+            </Text>
+
             <TextInput
               value={newPrice}
               onChangeText={setNewPrice}
               placeholder="65000"
-              placeholderTextColor="#888"
+              placeholderTextColor="#777"
               keyboardType="numeric"
               style={s.input}
             />
 
-            <Text style={s.label}>جۆری بەرهەم</Text>
+            <Text style={s.label}>
+              جۆری بەرهەم
+            </Text>
 
             <ScrollView
               horizontal
@@ -216,7 +303,8 @@ export default function App() {
                     onPress={() => setNewCategory(c)}
                     style={[
                       s.cat,
-                      newCategory === c && s.catActive,
+                      newCategory === c &&
+                        s.catActive,
                     ]}
                   >
                     <Text
@@ -232,12 +320,15 @@ export default function App() {
                 ))}
             </ScrollView>
 
-            <Text style={s.label}>لینکی وێنە</Text>
+            <Text style={s.label}>
+              لینکی وێنە
+            </Text>
+
             <TextInput
               value={newImage}
               onChangeText={setNewImage}
               placeholder="https://..."
-              placeholderTextColor="#888"
+              placeholderTextColor="#777"
               autoCapitalize="none"
               style={s.input}
             />
@@ -267,7 +358,9 @@ export default function App() {
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView>
-          <TouchableOpacity onPress={() => setSelected(null)}>
+          <TouchableOpacity
+            onPress={() => setSelected(null)}
+          >
             <Text style={s.back}>‹ گەڕانەوە</Text>
           </TouchableOpacity>
 
@@ -277,7 +370,9 @@ export default function App() {
           />
 
           <View style={s.pad}>
-            <Text style={s.title}>{selected.name}</Text>
+            <Text style={s.title}>
+              {selected.name}
+            </Text>
 
             <Text style={s.price}>
               {selected.price.toLocaleString()} IQD
@@ -285,7 +380,6 @@ export default function App() {
 
             <Text style={s.desc}>
               بەرهەمێکی جوان و کوالێتی بۆ ماڵەکەت.
-              بۆ زانیاری زیاتر پەیوەندیمان پێوە بکە.
             </Text>
 
             <TouchableOpacity
@@ -297,14 +391,18 @@ export default function App() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={s.deleteBtn}
-              onPress={() => deleteProduct(selected)}
-            >
-              <Text style={s.deleteText}>
-                🗑️ سڕینەوەی بەرهەم
-              </Text>
-            </TouchableOpacity>
+            {isAdmin && (
+              <TouchableOpacity
+                style={s.deleteBtn}
+                onPress={() =>
+                  deleteProduct(selected)
+                }
+              >
+                <Text style={s.deleteText}>
+                  🗑️ سڕینەوەی بەرهەم
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -315,24 +413,32 @@ export default function App() {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <Text style={s.brand}>ASYA</Text>
-        <Text style={s.sub}>Shwshawaty ASYA</Text>
+        <Text style={s.sub}>
+          Shwshawaty ASYA
+        </Text>
       </View>
 
       {tab === "home" && (
         <ScrollView>
           <View style={s.banner}>
-            <Text style={s.bannerTitle}>کۆمەڵە خواردن</Text>
-            <Text style={s.bannerSub}>نوێ و تایبەت بۆ تۆ</Text>
+            <Text style={s.bannerTitle}>
+              کۆمەڵە خواردن
+            </Text>
+            <Text style={s.bannerSub}>
+              نوێ و تایبەت بۆ تۆ
+            </Text>
           </View>
 
-          <TouchableOpacity
-            style={s.addProductBtn}
-            onPress={() => setShowAdd(true)}
-          >
-            <Text style={s.addProductText}>
-              ➕ زیادکردنی بەرهەم
-            </Text>
-          </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity
+              style={s.addProductBtn}
+              onPress={() => setShowAdd(true)}
+            >
+              <Text style={s.addProductText}>
+                ➕ زیادکردنی بەرهەم
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TextInput
             value={query}
@@ -353,7 +459,8 @@ export default function App() {
                 onPress={() => setCategory(c)}
                 style={[
                   s.cat,
-                  category === c && s.catActive,
+                  category === c &&
+                    s.catActive,
                 ]}
               >
                 <Text
@@ -369,19 +476,25 @@ export default function App() {
             ))}
           </ScrollView>
 
-          <Text style={s.section}>بەرهەمەکان</Text>
+          <Text style={s.section}>
+            بەرهەمەکان
+          </Text>
 
           <FlatList
             data={filtered}
             numColumns={2}
             scrollEnabled={false}
             keyExtractor={(x) => x.id}
-            columnWrapperStyle={{ gap: 12 }}
+            columnWrapperStyle={{
+              gap: 12,
+            }}
             contentContainerStyle={s.grid}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={s.card}
-                onPress={() => setSelected(item)}
+                onPress={() =>
+                  setSelected(item)
+                }
               >
                 <Image
                   source={{ uri: item.image }}
@@ -401,7 +514,9 @@ export default function App() {
 
                 <TouchableOpacity
                   style={s.smallBtn}
-                  onPress={() => addToCart(item)}
+                  onPress={() =>
+                    addToCart(item)
+                  }
                 >
                   <Text style={s.smallBtnText}>
                     + سەبەت
@@ -415,7 +530,9 @@ export default function App() {
 
       {tab === "cart" && (
         <View style={s.pad}>
-          <Text style={s.pageTitle}>سەبەت 🛒</Text>
+          <Text style={s.pageTitle}>
+            سەبەت 🛒
+          </Text>
 
           {cart.length === 0 ? (
             <Text style={s.empty}>
@@ -424,8 +541,14 @@ export default function App() {
           ) : (
             <>
               {cart.map((p, i) => (
-                <View style={s.row} key={i}>
-                  <Text style={s.rowName}>{p.name}</Text>
+                <View
+                  style={s.row}
+                  key={i}
+                >
+                  <Text style={s.rowName}>
+                    {p.name}
+                  </Text>
+
                   <Text style={s.rowPrice}>
                     {p.price.toLocaleString()} IQD
                   </Text>
@@ -437,7 +560,7 @@ export default function App() {
                 onPress={() =>
                   Alert.alert(
                     "داواکاری",
-                    "لە وەشانی داهاتوودا داواکارییەکە بە سیستەمی فرۆشتن نێردراوە."
+                    "داواکارییەکە ئامادەیە."
                   )
                 }
               >
@@ -451,41 +574,100 @@ export default function App() {
       )}
 
       {tab === "profile" && (
-        <View style={s.pad}>
-          <Text style={s.pageTitle}>پڕۆفایل 👤</Text>
+        <ScrollView>
+          <View style={s.pad}>
+            <Text style={s.pageTitle}>
+              پڕۆفایل 👤
+            </Text>
 
-          <Text style={s.desc}>
-            بەشی پڕۆفایل و مێژووی داواکارییەکان
-            لە قۆناغی داهاتوودا زیاد دەکرێت.
-          </Text>
-        </View>
+            {!isAdmin ? (
+              <>
+                <Text style={s.desc}>
+                  بۆ بەڕێوەبردنی بەرهەمەکان،
+                  تەنها بەڕێوەبەر دەتوانێت بچێتە
+                  بەشی Admin.
+                </Text>
+
+                <TouchableOpacity
+                  style={s.goldBtn}
+                  onPress={() =>
+                    setShowLogin(true)
+                  }
+                >
+                  <Text style={s.goldText}>
+                    🔐 بەشی Admin
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={s.adminWelcome}>
+                  ✅ بەڕێز بەڕێوەبەر، تۆ چوویتە
+                  ناو Admin.
+                </Text>
+
+                <TouchableOpacity
+                  style={s.goldBtn}
+                  onPress={() =>
+                    setShowAdd(true)
+                  }
+                >
+                  <Text style={s.goldText}>
+                    ➕ زیادکردنی بەرهەم
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={s.logoutBtn}
+                  onPress={logoutAdmin}
+                >
+                  <Text style={s.logoutText}>
+                    🔒 چوونەدەرەوە
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </ScrollView>
       )}
 
       <View style={s.nav}>
-        <TouchableOpacity onPress={() => setTab("home")}>
+        <TouchableOpacity
+          onPress={() => setTab("home")}
+        >
           <Text
             style={
-              tab === "home" ? s.navOn : s.navOff
+              tab === "home"
+                ? s.navOn
+                : s.navOff
             }
           >
             ⌂{"\n"}سەرەکی
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setTab("cart")}>
+        <TouchableOpacity
+          onPress={() => setTab("cart")}
+        >
           <Text
             style={
-              tab === "cart" ? s.navOn : s.navOff
+              tab === "cart"
+                ? s.navOn
+                : s.navOff
             }
           >
             🛒{"\n"}سەبەت ({cart.length})
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setTab("profile")}>
+        <TouchableOpacity
+          onPress={() => setTab("profile")}
+        >
           <Text
             style={
-              tab === "profile" ? s.navOn : s.navOff
+              tab === "profile"
+                ? s.navOn
+                : s.navOff
             }
           >
             👤{"\n"}پڕۆفایل
@@ -778,6 +960,26 @@ const s = StyleSheet.create({
 
   deleteText: {
     color: "#ff7777",
+    fontWeight: "700",
+  },
+
+  adminWelcome: {
+    color: "#d7a52b",
+    fontSize: 16,
+    lineHeight: 28,
+  },
+
+  logoutBtn: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#555",
+    alignItems: "center",
+  },
+
+  logoutText: {
+    color: "#fff",
     fontWeight: "700",
   },
 });
