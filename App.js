@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -11,41 +11,42 @@ import {
   ScrollView,
   Alert,
   Linking,
-  Platform,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 
-const WHATSAPP = "9647718758585";
 const ADMIN_PASSWORD = "tt69fu35T";
+const WHATSAPP = "9647718758585";
 
-const categories = [
-  "کۆمەڵە خواردن",
-  "پیاڵە و پیاڵەخانە",
+const cats = [
+  "هەموو",
+  "سێتی نان خواردن",
+  "پیاڵە و قۆری",
   "کاسە و جام",
-  "کالای ماڵ",
   "کۆمەڵە دیاری",
+  "کاڵای ناوماڵ",
 ];
 
 const initialProducts = [
   {
     id: "1",
-    name: "کۆمەڵە خواردن 25 پارچە",
+    name: "سێتی نان خواردن 25 پارچە",
     price: 75000,
-    category: "کۆمەڵە خواردن",
+    category: "سێتی نان خواردن",
     image:
       "https://images.unsplash.com/photo-1577937927133-66ef06acdf18?w=800",
   },
   {
     id: "2",
-    name: "سێتی پیاڵە 12 پارچە",
+    name: "سێتی پیاڵە و قۆری",
     price: 45000,
-    category: "پیاڵە و پیاڵەخانە",
+    category: "پیاڵە و قۆری",
     image:
       "https://images.unsplash.com/photo-1572119865084-43c285814d63?w=800",
   },
   {
     id: "3",
-    name: "کاسە سێتە 6 پارچە",
+    name: "کاسە و جام 6 پارچە",
     price: 30000,
     category: "کاسە و جام",
     image:
@@ -59,43 +60,157 @@ const initialProducts = [
     image:
       "https://images.unsplash.com/photo-1603199506016-b9a594b593c0?w=800",
   },
+  {
+    id: "5",
+    name: "کاڵای ناوماڵ",
+    price: 55000,
+    category: "کاڵای ناوماڵ",
+    image:
+      "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800",
+  },
 ];
 
 export default function App() {
   const [tab, setTab] = useState("home");
   const [category, setCategory] = useState("هەموو");
   const [query, setQuery] = useState("");
-
-  const [products, setProducts] = useState(initialProducts);
   const [cart, setCart] = useState([]);
   const [selected, setSelected] = useState(null);
 
+  const [products, setProducts] = useState(initialProducts);
+
   const [showAdd, setShowAdd] = useState(false);
-  const [admin, setAdmin] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
   const [password, setPassword] = useState("");
 
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("");
-  const [newCategory, setNewCategory] = useState("کالای ماڵ");
+  const [newCategory, setNewCategory] =
+    useState("کاڵای ناوماڵ");
   const [newImage, setNewImage] = useState("");
 
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [customerAddress, setCustomerAddress] = useState("");
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(
+        "asya_products"
+      );
+
+      if (saved) {
+        setProducts(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const saveProducts = async (list) => {
+    try {
+      await AsyncStorage.setItem(
+        "asya_products",
+        JSON.stringify(list)
+      );
+
+      setProducts(list);
+    } catch (error) {
+      Alert.alert(
+        "هەڵە",
+        "نەتوانرا بەرهەمەکان هەڵبگیرێن."
+      );
+    }
+  };
 
   const filtered = useMemo(() => {
     return products.filter(
       (p) =>
-        (category === "هەموو" || p.category === category) &&
-        p.name.toLowerCase().includes(query.toLowerCase())
+        (category === "هەموو" ||
+          p.category === category) &&
+        p.name
+          .toLowerCase()
+          .includes(query.toLowerCase())
     );
   }, [products, category, query]);
 
-  const total = cart.reduce((sum, p) => sum + p.price, 0);
+  const addToCart = (product) => {
+    setCart((current) => [
+      ...current,
+      product,
+    ]);
 
-  // =========================
-  // هەڵبژاردنی وێنە لە گەلەری
-  // =========================
+    Alert.alert(
+      "زیادکرا ✅",
+      `${product.name} خرایە ناو سەبەتەکە.`
+    );
+  };
+
+  const removeFromCart = (index) => {
+    setCart((current) =>
+      current.filter((_, i) => i !== index)
+    );
+  };
+
+  const total = cart.reduce(
+    (sum, product) =>
+      sum + product.price,
+    0
+  );
+
+  const checkout = async () => {
+    if (cart.length === 0) {
+      Alert.alert(
+        "سەبەت بەتاڵە",
+        "تکایە سەرەتا بەرهەمێک زیاد بکە."
+      );
+      return;
+    }
+
+    const items = cart
+      .map(
+        (product, index) =>
+          `${index + 1}. ${product.name} - ${product.price.toLocaleString()} IQD`
+      )
+      .join("\n");
+
+    const message =
+      `سڵاو Shwshawaty ASYA 🌟\n\n` +
+      `داواکارییەکی نوێم هەیە:\n\n` +
+      `${items}\n\n` +
+      `💰 کۆی گشتی: ${total.toLocaleString()} IQD\n\n` +
+      `تکایە داواکارییەکەم پشتڕاست بکەنەوە.`;
+
+    const url =
+      `https://wa.me/${WHATSAPP}` +
+      `?text=${encodeURIComponent(message)}`;
+
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert(
+        "هەڵە",
+        "نەتوانرا WhatsApp بکرێتەوە."
+      );
+    }
+  };
+
+  const openAddProduct = () => {
+    setPassword("");
+    setAuthorized(false);
+    setShowAdd(true);
+  };
+
+  const checkPassword = () => {
+    if (password === ADMIN_PASSWORD) {
+      setAuthorized(true);
+    } else {
+      Alert.alert(
+        "پاسۆرد هەڵەیە ❌",
+        "پاسۆردەکە هەڵەیە."
+      );
+    }
+  };
 
   const pickImage = async () => {
     try {
@@ -104,49 +219,60 @@ export default function App() {
 
       if (!permission.granted) {
         Alert.alert(
-          "ڕێگەپێدان",
-          "تکایە ڕێگە بدە بە ئەپەکە بۆ دەستگەیشتن بە گەلەری."
+          "ڕێگەپێدان پێویستە",
+          "تکایە ڕێگە بە Gallery بدە."
         );
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
+      const result =
+        await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
 
-      if (!result.canceled && result.assets?.length > 0) {
+      if (
+        !result.canceled &&
+        result.assets &&
+        result.assets[0]
+      ) {
         setNewImage(result.assets[0].uri);
       }
     } catch (error) {
-      Alert.alert("هەڵە", "نەتوانرا وێنە هەڵبژێردرێت.");
+      Alert.alert(
+        "هەڵە",
+        "نەتوانرا وێنە هەڵبژێردرێت."
+      );
     }
   };
 
-  // =========================
-  // زیادکردنی بەرهەم
-  // =========================
-
-  const addProduct = () => {
-    if (!admin) {
-      Alert.alert("ڕێگەپێنەدراو", "تکایە وەک بەڕێوەبەر بچۆ ژوورەوە.");
-      return;
-    }
-
+  const addProduct = async () => {
     if (!newName.trim()) {
-      Alert.alert("هەڵە", "ناوی بەرهەم بنووسە.");
+      Alert.alert(
+        "هەڵە",
+        "ناوی بەرهەم بنووسە."
+      );
       return;
     }
 
-    if (!newPrice.trim() || isNaN(Number(newPrice))) {
-      Alert.alert("هەڵە", "نرخی بەرهەم بە ژمارە بنووسە.");
+    if (
+      !newPrice.trim() ||
+      isNaN(Number(newPrice))
+    ) {
+      Alert.alert(
+        "هەڵە",
+        "نرخی بەرهەم بە ژمارە بنووسە."
+      );
       return;
     }
 
     if (!newImage.trim()) {
-      Alert.alert("هەڵە", "تکایە وێنەی بەرهەم هەڵبژێرە.");
+      Alert.alert(
+        "هەڵە",
+        "تکایە وێنەی بەرهەم هەڵبژێرە."
+      );
       return;
     }
 
@@ -158,20 +284,26 @@ export default function App() {
       image: newImage,
     };
 
-    setProducts((old) => [product, ...old]);
+    const updated = [
+      product,
+      ...products,
+    ];
+
+    await saveProducts(updated);
 
     setNewName("");
     setNewPrice("");
-    setNewCategory("کالای ماڵ");
+    setNewCategory("کاڵای ناوماڵ");
     setNewImage("");
+    setPassword("");
+    setAuthorized(false);
     setShowAdd(false);
 
-    Alert.alert("✅ سەرکەوتوو بوو", "بەرهەمەکە زیاد کرا.");
+    Alert.alert(
+      "سەرکەوتوو بوو ✅",
+      "بەرهەمەکە زیاد کرا."
+    );
   };
-
-  // =========================
-  // سڕینەوەی بەرهەم
-  // =========================
 
   const deleteProduct = (product) => {
     Alert.alert(
@@ -185,227 +317,203 @@ export default function App() {
         {
           text: "بەڵێ، بیسڕەوە",
           style: "destructive",
-          onPress: () => {
-            setProducts((old) =>
-              old.filter((p) => p.id !== product.id)
-            );
+          onPress: async () => {
+            const updated =
+              products.filter(
+                (p) =>
+                  p.id !== product.id
+              );
 
+            await saveProducts(updated);
             setSelected(null);
-
-            setCart((old) =>
-              old.filter((p) => p.id !== product.id)
-            );
           },
         },
       ]
     );
   };
 
-  // =========================
-  // زیادکردن بۆ سەبەت
-  // =========================
-
-  const addToCart = (product) => {
-    setCart((old) => [...old, product]);
-
-    Alert.alert(
-      "✅ زیادکرا",
-      `${product.name}\nخرایە ناو سەبەتەکە.`
-    );
-  };
-
-  // =========================
-  // سڕینەوەی دانەیەک لە سەبەت
-  // =========================
-
-  const removeFromCart = (index) => {
-    setCart((old) => old.filter((_, i) => i !== index));
-  };
-
-  // =========================
-  // چوونەژوورەوەی بەڕێوەبەر
-  // =========================
-
-  const loginAdmin = () => {
-    if (password === ADMIN_PASSWORD) {
-      setAdmin(true);
-      setPassword("");
-      Alert.alert("✅ سەرکەوتوو بوو", "بەڕێوەبەر چووە ژوورەوە.");
-    } else {
-      Alert.alert("❌ هەڵە", "پاسۆردەکە هەڵەیە.");
-    }
-  };
-
-  // =========================
-  // ناردنی داواکاری بۆ WhatsApp
-  // =========================
-
-  const sendOrder = async () => {
-    if (cart.length === 0) {
-      Alert.alert("سەبەت بەتاڵە", "هیچ بەرهەمێکت هەڵنەبژاردووە.");
-      return;
-    }
-
-    if (!customerName.trim()) {
-      Alert.alert("هەڵە", "تکایە ناوت بنووسە.");
-      return;
-    }
-
-    if (!customerPhone.trim()) {
-      Alert.alert("هەڵە", "تکایە ژمارەی مۆبایلت بنووسە.");
-      return;
-    }
-
-    if (!customerAddress.trim()) {
-      Alert.alert("هەڵە", "تکایە ناونیشانی گەیاندن بنووسە.");
-      return;
-    }
-
-    let message = `🛍️ *داواکاری نوێ - Shwshawaty ASYA*%0A%0A`;
-
-    message += `👤 ناو: ${customerName}%0A`;
-    message += `📞 مۆبایل: ${customerPhone}%0A`;
-    message += `📍 ناونیشان: ${customerAddress}%0A%0A`;
-
-    message += `🛒 *بەرهەمەکان:*%0A`;
-
-    cart.forEach((p, index) => {
-      message += `${index + 1}. ${p.name} - ${p.price.toLocaleString()} IQD%0A`;
-    });
-
-    message += `%0A💰 *کۆی گشتی: ${total.toLocaleString()} IQD*`;
-
-    const url = `https://wa.me/${WHATSAPP}?text=${message}`;
-
-    try {
-      const supported = await Linking.canOpenURL(url);
-
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert(
-          "WhatsApp نەدۆزرایەوە",
-          "تکایە WhatsApp لەسەر مۆبایلەکەت دابەزێنە."
-        );
-      }
-    } catch (error) {
-      Alert.alert("هەڵە", "نەتوانرا WhatsApp بکرێتەوە.");
-    }
-  };
-
-  // =========================
-  // پەڕەی زیادکردنی بەرهەم
-  // =========================
-
   if (showAdd) {
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView>
-          <TouchableOpacity onPress={() => setShowAdd(false)}>
-            <Text style={s.back}>‹ گەڕانەوە</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setShowAdd(false);
+              setAuthorized(false);
+            }}
+          >
+            <Text style={s.back}>
+              ‹ گەڕانەوە
+            </Text>
           </TouchableOpacity>
 
           <View style={s.pad}>
-            <Text style={s.pageTitle}>
-              ➕ زیادکردنی بەرهەم
-            </Text>
+            {!authorized ? (
+              <>
+                <Text style={s.pageTitle}>
+                  🔐 بەشی بەڕێوەبردن
+                </Text>
 
-            <Text style={s.label}>✏️ ناوی بەرهەم</Text>
+                <Text style={s.desc}>
+                  بۆ زیادکردنی بەرهەم
+                  پاسۆرد بنووسە.
+                </Text>
 
-            <TextInput
-              value={newName}
-              onChangeText={setNewName}
-              placeholder="بۆ نموونە: سێتی چای 18 پارچە"
-              placeholderTextColor="#888"
-              style={s.input}
-            />
+                <Text style={s.label}>
+                  پاسۆرد
+                </Text>
 
-            <Text style={s.label}>💰 نرخ بە دینار</Text>
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="پاسۆرد"
+                  placeholderTextColor="#888"
+                  secureTextEntry
+                  style={s.input}
+                />
 
-            <TextInput
-              value={newPrice}
-              onChangeText={setNewPrice}
-              placeholder="65000"
-              placeholderTextColor="#888"
-              keyboardType="numeric"
-              style={s.input}
-            />
-
-            <Text style={s.label}>📂 جۆری بەرهەم</Text>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={s.cats}
-            >
-              {categories.map((c) => (
                 <TouchableOpacity
-                  key={c}
-                  onPress={() => setNewCategory(c)}
-                  style={[
-                    s.cat,
-                    newCategory === c && s.catActive,
-                  ]}
+                  style={s.goldBtn}
+                  onPress={checkPassword}
                 >
-                  <Text
-                    style={
-                      newCategory === c
-                        ? s.catTextActive
-                        : s.catText
-                    }
-                  >
-                    {c}
+                  <Text style={s.goldText}>
+                    🔓 چوونەژوورەوە
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </>
+            ) : (
+              <>
+                <Text style={s.pageTitle}>
+                  ➕ زیادکردنی بەرهەم
+                </Text>
 
-            <Text style={s.label}>📷 وێنەی بەرهەم</Text>
+                <TouchableOpacity
+                  style={s.imagePicker}
+                  onPress={pickImage}
+                >
+                  {newImage ? (
+                    <Image
+                      source={{
+                        uri: newImage,
+                      }}
+                      style={s.preview}
+                    />
+                  ) : (
+                    <>
+                      <Text style={s.camera}>
+                        📷
+                      </Text>
 
-            <TouchableOpacity
-              style={s.galleryBtn}
-              onPress={pickImage}
-            >
-              <Text style={s.galleryText}>
-                📷 هەڵبژاردنی وێنە لە گەلەری
-              </Text>
-            </TouchableOpacity>
+                      <Text style={s.imageText}>
+                        وێنەی بەرهەم
+                        هەڵبژێرە
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
 
-            {newImage ? (
-              <Image
-                source={{ uri: newImage }}
-                style={s.preview}
-              />
-            ) : null}
+                <Text style={s.label}>
+                  ناوی بەرهەم
+                </Text>
 
-            <TouchableOpacity
-              style={s.goldBtn}
-              onPress={addProduct}
-            >
-              <Text style={s.goldText}>
-                ➕ زیادکردنی بەرهەم
-              </Text>
-            </TouchableOpacity>
+                <TextInput
+                  value={newName}
+                  onChangeText={setNewName}
+                  placeholder="ناوی بەرهەم"
+                  placeholderTextColor="#888"
+                  style={s.input}
+                />
+
+                <Text style={s.label}>
+                  نرخ بە دینار
+                </Text>
+
+                <TextInput
+                  value={newPrice}
+                  onChangeText={setNewPrice}
+                  placeholder="65000"
+                  placeholderTextColor="#888"
+                  keyboardType="numeric"
+                  style={s.input}
+                />
+
+                <Text style={s.label}>
+                  جۆری بەرهەم
+                </Text>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={
+                    false
+                  }
+                  style={s.cats}
+                >
+                  {cats
+                    .filter(
+                      (x) =>
+                        x !== "هەموو"
+                    )
+                    .map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() =>
+                          setNewCategory(c)
+                        }
+                        style={[
+                          s.cat,
+                          newCategory ===
+                            c &&
+                            s.catActive,
+                        ]}
+                      >
+                        <Text
+                          style={
+                            newCategory ===
+                            c
+                              ? s.catTextActive
+                              : s.catText
+                          }
+                        >
+                          {c}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                <TouchableOpacity
+                  style={s.goldBtn}
+                  onPress={addProduct}
+                >
+                  <Text style={s.goldText}>
+                    ➕ زیادکردنی بەرهەم
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
-  // =========================
-  // پەڕەی بەرهەم
-  // =========================
-
   if (selected) {
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView>
-          <TouchableOpacity onPress={() => setSelected(null)}>
-            <Text style={s.back}>‹ گەڕانەوە</Text>
+          <TouchableOpacity
+            onPress={() =>
+              setSelected(null)
+            }
+          >
+            <Text style={s.back}>
+              ‹ گەڕانەوە
+            </Text>
           </TouchableOpacity>
 
           <Image
-            source={{ uri: selected.image }}
+            source={{
+              uri: selected.image,
+            }}
             style={s.hero}
           />
 
@@ -418,78 +526,77 @@ export default function App() {
               {selected.price.toLocaleString()} IQD
             </Text>
 
-            <Text style={s.categoryText}>
-              📂 {selected.category}
-            </Text>
-
             <Text style={s.desc}>
-              بەرهەمێکی جوان و کوالێتی بۆ ماڵەکەت.
-              بۆ زانیاری زیاتر پەیوەندیمان پێوە بکە.
+              بەرهەمێکی جوان و کوالێتی
+              بۆ ماڵەکەت.
+              بۆ زانیاری زیاتر
+              پەیوەندیمان پێوە بکە.
             </Text>
 
             <TouchableOpacity
               style={s.goldBtn}
-              onPress={() => addToCart(selected)}
+              onPress={() =>
+                addToCart(selected)
+              }
             >
               <Text style={s.goldText}>
                 🛒 زیادکردن بۆ سەبەت
               </Text>
             </TouchableOpacity>
 
-            {admin && (
-              <TouchableOpacity
-                style={s.deleteBtn}
-                onPress={() => deleteProduct(selected)}
-              >
-                <Text style={s.deleteText}>
-                  🗑️ سڕینەوەی بەرهەم
-                </Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={s.deleteBtn}
+              onPress={() =>
+                deleteProduct(selected)
+              }
+            >
+              <Text style={s.deleteText}>
+                🗑️ سڕینەوەی بەرهەم
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
-  // =========================
-  // ئەپی سەرەکی
-  // =========================
-
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <Text style={s.brand}>ASYA</Text>
-        <Text style={s.sub}>Shwshawaty ASYA</Text>
+        <Text style={s.brand}>
+          ASYA
+        </Text>
+
+        <Text style={s.sub}>
+          Shwshawaty ASYA
+        </Text>
       </View>
 
       {tab === "home" && (
         <ScrollView>
           <View style={s.banner}>
             <Text style={s.bannerTitle}>
-              Shwshawaty ASYA
+              بەخێربێیت بۆ ASYA
             </Text>
 
             <Text style={s.bannerSub}>
-              جوانترین کاڵاکان بۆ ماڵەکەت
+              جوانی بۆ ماڵەکەت
             </Text>
           </View>
 
-          {admin && (
-            <TouchableOpacity
-              style={s.addProductBtn}
-              onPress={() => setShowAdd(true)}
-            >
-              <Text style={s.addProductText}>
-                ➕ زیادکردنی بەرهەم
-              </Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={s.addProductBtn}
+            onPress={openAddProduct}
+          >
+            <Text style={s.addProductText}>
+              ➕ زیادکردنی بەرهەم
+            </Text>
+          </TouchableOpacity>
 
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="🔎 بگەڕێ بۆ بەرهەم..."
+            placeholder="بگەڕێ بۆ بەرهەم..."
             placeholderTextColor="#777"
             style={s.search}
           />
@@ -499,13 +606,16 @@ export default function App() {
             showsHorizontalScrollIndicator={false}
             style={s.cats}
           >
-            {["هەموو", ...categories].map((c) => (
+            {cats.map((c) => (
               <TouchableOpacity
                 key={c}
-                onPress={() => setCategory(c)}
+                onPress={() =>
+                  setCategory(c)
+                }
                 style={[
                   s.cat,
-                  category === c && s.catActive,
+                  category === c &&
+                    s.catActive,
                 ]}
               >
                 <Text
@@ -530,15 +640,23 @@ export default function App() {
             numColumns={2}
             scrollEnabled={false}
             keyExtractor={(x) => x.id}
-            columnWrapperStyle={{ gap: 12 }}
-            contentContainerStyle={s.grid}
+            columnWrapperStyle={{
+              gap: 12,
+            }}
+            contentContainerStyle={
+              s.grid
+            }
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={s.card}
-                onPress={() => setSelected(item)}
+                onPress={() =>
+                  setSelected(item)
+                }
               >
                 <Image
-                  source={{ uri: item.image }}
+                  source={{
+                    uri: item.image,
+                  }}
                   style={s.cardImg}
                 />
 
@@ -549,15 +667,23 @@ export default function App() {
                   {item.name}
                 </Text>
 
-                <Text style={s.cardPrice}>
+                <Text
+                  style={s.cardPrice}
+                >
                   {item.price.toLocaleString()} IQD
                 </Text>
 
                 <TouchableOpacity
                   style={s.smallBtn}
-                  onPress={() => addToCart(item)}
+                  onPress={() =>
+                    addToCart(item)
+                  }
                 >
-                  <Text style={s.smallBtnText}>
+                  <Text
+                    style={
+                      s.smallBtnText
+                    }
+                  >
                     + سەبەت
                   </Text>
                 </TouchableOpacity>
@@ -568,168 +694,96 @@ export default function App() {
       )}
 
       {tab === "cart" && (
-        <ScrollView>
-          <View style={s.pad}>
-            <Text style={s.pageTitle}>
-              🛒 سەبەت
+        <View style={s.pad}>
+          <Text style={s.pageTitle}>
+            سەبەت 🛒
+          </Text>
+
+          {cart.length === 0 ? (
+            <Text style={s.empty}>
+              سەبەتەکەت بەتاڵە.
             </Text>
+          ) : (
+            <>
+              {cart.map((p, i) => (
+                <View
+                  style={s.row}
+                  key={`${p.id}-${i}`}
+                >
+                  <Text
+                    style={s.rowName}
+                  >
+                    {p.name}
+                  </Text>
 
-            {cart.length === 0 ? (
-              <Text style={s.empty}>
-                سەبەتەکەت بەتاڵە.
-              </Text>
-            ) : (
-              <>
-                {cart.map((p, i) => (
-                  <View style={s.row} key={`${p.id}-${i}`}>
-                    <Image
-                      source={{ uri: p.image }}
-                      style={s.cartImg}
-                    />
+                  <Text
+                    style={s.rowPrice}
+                  >
+                    {p.price.toLocaleString()} IQD
+                  </Text>
 
-                    <View style={s.cartInfo}>
-                      <Text style={s.rowName}>
-                        {p.name}
-                      </Text>
-
-                      <Text style={s.rowPrice}>
-                        {p.price.toLocaleString()} IQD
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity
-                      onPress={() => removeFromCart(i)}
+                  <TouchableOpacity
+                    onPress={() =>
+                      removeFromCart(i)
+                    }
+                  >
+                    <Text
+                      style={s.remove}
                     >
-                      <Text style={s.removeText}>
-                        ✕
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-
-                <View style={s.totalBox}>
-                  <Text style={s.totalLabel}>
-                    کۆی گشتی
-                  </Text>
-
-                  <Text style={s.totalPrice}>
-                    {total.toLocaleString()} IQD
-                  </Text>
+                      ✕
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+              ))}
 
-                <Text style={s.formTitle}>
-                  📝 زانیاری داواکاری
+              <View
+                style={s.totalBox}
+              >
+                <Text
+                  style={s.totalLabel}
+                >
+                  کۆی گشتی
                 </Text>
 
-                <TextInput
-                  value={customerName}
-                  onChangeText={setCustomerName}
-                  placeholder="👤 ناوی تەواو"
-                  placeholderTextColor="#777"
-                  style={s.input}
-                />
-
-                <TextInput
-                  value={customerPhone}
-                  onChangeText={setCustomerPhone}
-                  placeholder="📞 ژمارەی مۆبایل"
-                  placeholderTextColor="#777"
-                  keyboardType="phone-pad"
-                  style={s.input}
-                />
-
-                <TextInput
-                  value={customerAddress}
-                  onChangeText={setCustomerAddress}
-                  placeholder="📍 ناونیشانی گەیاندن"
-                  placeholderTextColor="#777"
-                  multiline
-                  style={[s.input, s.addressInput]}
-                />
-
-                <TouchableOpacity
-                  style={s.whatsappBtn}
-                  onPress={sendOrder}
+                <Text
+                  style={s.totalPrice}
                 >
-                  <Text style={s.whatsappText}>
-                    📱 ناردنی داواکاری بۆ WhatsApp
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </ScrollView>
+                  {total.toLocaleString()} IQD
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={s.goldBtn}
+                onPress={checkout}
+              >
+                <Text
+                  style={s.goldText}
+                >
+                  📲 تەواوکردنی داواکاری
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       )}
 
       {tab === "profile" && (
-        <ScrollView>
-          <View style={s.pad}>
-            <Text style={s.pageTitle}>
-              👤 پڕۆفایل
-            </Text>
+        <View style={s.pad}>
+          <Text style={s.pageTitle}>
+            پڕۆفایل 👤
+          </Text>
 
-            {!admin ? (
-              <>
-                <Text style={s.desc}>
-                  🔐 بەشی بەڕێوەبەر
-                </Text>
-
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="پاسۆرد"
-                  placeholderTextColor="#777"
-                  secureTextEntry
-                  style={s.input}
-                />
-
-                <TouchableOpacity
-                  style={s.goldBtn}
-                  onPress={loginAdmin}
-                >
-                  <Text style={s.goldText}>
-                    🔐 چوونەژوورەوە
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <View style={s.adminBox}>
-                  <Text style={s.adminTitle}>
-                    👑 بەڕێوەبەر
-                  </Text>
-
-                  <Text style={s.adminText}>
-                    ئێستا وەک بەڕێوەبەر چوویتە ژوورەوە.
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={s.addProductBtn}
-                  onPress={() => setShowAdd(true)}
-                >
-                  <Text style={s.addProductText}>
-                    ➕ زیادکردنی بەرهەم
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={s.logoutBtn}
-                  onPress={() => setAdmin(false)}
-                >
-                  <Text style={s.logoutText}>
-                    🚪 دەرچوون لە بەڕێوەبەر
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </ScrollView>
+          <Text style={s.desc}>
+            بەخێربێیت بۆ Shwshawaty ASYA.
+          </Text>
+        </View>
       )}
 
       <View style={s.nav}>
         <TouchableOpacity
-          onPress={() => setTab("home")}
+          onPress={() =>
+            setTab("home")
+          }
         >
           <Text
             style={
@@ -743,7 +797,9 @@ export default function App() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => setTab("cart")}
+          onPress={() =>
+            setTab("cart")
+          }
         >
           <Text
             style={
@@ -757,7 +813,9 @@ export default function App() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => setTab("profile")}
+          onPress={() =>
+            setTab("profile")
+          }
         >
           <Text
             style={
@@ -806,7 +864,7 @@ const s = StyleSheet.create({
   },
 
   bannerTitle: {
-    fontSize: 27,
+    fontSize: 28,
     fontWeight: "800",
     color: "#e1b63e",
   },
@@ -959,46 +1017,34 @@ const s = StyleSheet.create({
   },
 
   row: {
-    padding: 12,
+    padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#333",
     flexDirection: "row",
     alignItems: "center",
-  },
-
-  cartImg: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-  },
-
-  cartInfo: {
-    flex: 1,
-    marginLeft: 12,
+    gap: 10,
   },
 
   rowName: {
     color: "#fff",
-    fontWeight: "700",
+    flex: 1,
   },
 
   rowPrice: {
     color: "#d7a52b",
     fontWeight: "700",
-    marginTop: 5,
   },
 
-  removeText: {
-    color: "#ff6666",
-    fontSize: 22,
-    padding: 8,
+  remove: {
+    color: "#ff7777",
+    fontSize: 18,
   },
 
   totalBox: {
     marginTop: 18,
-    padding: 18,
-    borderRadius: 14,
-    backgroundColor: "#1c1c1c",
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "#1d1d1d",
     flexDirection: "row",
     justifyContent: "space-between",
   },
@@ -1012,43 +1058,21 @@ const s = StyleSheet.create({
   totalPrice: {
     color: "#d7a52b",
     fontSize: 20,
-    fontWeight: "900",
-  },
-
-  formTitle: {
-    color: "#fff",
-    fontSize: 21,
     fontWeight: "800",
-    marginTop: 25,
-    marginBottom: 10,
   },
 
-  input: {
-    backgroundColor: "#fff",
-    color: "#111",
-    borderRadius: 12,
-    padding: 13,
-    fontSize: 15,
-    marginTop: 10,
-  },
-
-  addressInput: {
-    minHeight: 90,
-    textAlignVertical: "top",
-  },
-
-  whatsappBtn: {
-    backgroundColor: "#25D366",
-    padding: 16,
+  goldBtn: {
+    backgroundColor: "#d7a52b",
+    padding: 15,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 18,
+    marginTop: 20,
   },
 
-  whatsappText: {
-    color: "#fff",
+  goldText: {
+    color: "#111",
+    fontWeight: "800",
     fontSize: 16,
-    fontWeight: "900",
   },
 
   back: {
@@ -1075,12 +1099,6 @@ const s = StyleSheet.create({
     marginTop: 10,
   },
 
-  categoryText: {
-    color: "#aaa",
-    marginTop: 10,
-    fontSize: 15,
-  },
-
   desc: {
     color: "#ccc",
     fontSize: 16,
@@ -1088,18 +1106,48 @@ const s = StyleSheet.create({
     marginTop: 15,
   },
 
-  goldBtn: {
-    backgroundColor: "#d7a52b",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 20,
+  label: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 14,
+    marginBottom: 7,
   },
 
-  goldText: {
+  input: {
+    backgroundColor: "#fff",
     color: "#111",
-    fontWeight: "800",
+    borderRadius: 12,
+    padding: 13,
+    fontSize: 15,
+  },
+
+  imagePicker: {
+    height: 220,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: "#d7a52b",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: "#191919",
+  },
+
+  preview: {
+    width: "100%",
+    height: "100%",
+  },
+
+  camera: {
+    fontSize: 45,
+  },
+
+  imageText: {
+    color: "#fff",
+    marginTop: 10,
     fontSize: 16,
+    fontWeight: "700",
   },
 
   deleteBtn: {
@@ -1114,67 +1162,5 @@ const s = StyleSheet.create({
   deleteText: {
     color: "#ff7777",
     fontWeight: "700",
-  },
-
-  label: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 14,
-    marginBottom: 7,
-  },
-
-  galleryBtn: {
-    borderWidth: 1,
-    borderColor: "#d7a52b",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 5,
-  },
-
-  galleryText: {
-    color: "#d7a52b",
-    fontWeight: "800",
-    fontSize: 16,
-  },
-
-  preview: {
-    width: "100%",
-    height: 240,
-    borderRadius: 12,
-    marginTop: 15,
-  },
-
-  adminBox: {
-    backgroundColor: "#1c1c1c",
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 15,
-  },
-
-  adminTitle: {
-    color: "#d7a52b",
-    fontSize: 22,
-    fontWeight: "900",
-  },
-
-  adminText: {
-    color: "#ccc",
-    marginTop: 8,
-  },
-
-  logoutBtn: {
-    borderWidth: 1,
-    borderColor: "#8b3333",
-    padding: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 12,
-  },
-
-  logoutText: {
-    color: "#ff7777",
-    fontWeight: "800",
   },
 });
