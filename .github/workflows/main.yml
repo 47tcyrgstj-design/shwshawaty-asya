@@ -17,7 +17,10 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+  run: npm install
+
+- name: Fix Expo dependencies
+  run: npx expo install @react-native-async-storage/async-storage expo-image-picker
 
       - name: Setup EAS
         run: npm install -g eas-cli
