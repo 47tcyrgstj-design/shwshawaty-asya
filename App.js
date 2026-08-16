@@ -830,3 +830,925 @@ export default function App() {
       </SafeAreaView>
     );
   }
+  return (
+    <SafeAreaView style={s.safe}>
+      <View style={s.header}>
+        <Text style={s.logo}>Shwshawaty ASYA</Text>
+
+        <TouchableOpacity
+          onPress={() => setShowAdmin(true)}
+        >
+          <Text style={s.adminIcon}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
+
+      {tab === "home" && (
+        <>
+          <View style={s.searchBox}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="گەڕان بۆ بەرهەم..."
+              placeholderTextColor="#888"
+              style={s.searchInput}
+            />
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.cats}
+          >
+            {cats.map((c) => (
+              <TouchableOpacity
+                key={c}
+                onPress={() => setCategory(c)}
+                style={[
+                  s.cat,
+                  category === c && s.catActive,
+                ]}
+              >
+                <Text
+                  style={
+                    category === c
+                      ? s.catTextActive
+                      : s.catText
+                  }
+                >
+                  {c}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {loading ? (
+            <View style={s.center}>
+              <Text style={s.loading}>
+                چاوەڕێ بکە...
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) =>
+                String(item.id)
+              }
+              numColumns={2}
+              contentContainerStyle={s.grid}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={s.card}
+                  onPress={() =>
+                    setSelected(item)
+                  }
+                >
+                  <Image
+                    source={{
+                      uri: item.image,
+                    }}
+                    style={s.productImage}
+                  />
+
+                  <View style={s.cardBody}>
+                    <Text
+                      style={s.productName}
+                      numberOfLines={2}
+                    >
+                      {item.name}
+                    </Text>
+
+                    <Text style={s.productPrice}>
+                      {Number(
+                        item.price
+                      ).toLocaleString()}{" "}
+                      IQD
+                    </Text>
+
+                    <TouchableOpacity
+                      style={s.addBtn}
+                      onPress={() =>
+                        addToCart(item)
+                      }
+                    >
+                      <Text style={s.addBtnText}>
+                        ➕ زیادکردن
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={s.center}>
+                  <Text style={s.empty}>
+                    هیچ بەرهەمێک نەدۆزرایەوە.
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </>
+      )}
+
+      {tab === "cart" && (
+        <View style={s.flex}>
+          <ScrollView
+            contentContainerStyle={s.pad}
+          >
+            <Text style={s.pageTitle}>
+              🛒 سەبەت
+            </Text>
+
+            {cart.length === 0 ? (
+              <View style={s.emptyCart}>
+                <Text style={s.emptyIcon}>
+                  🛒
+                </Text>
+
+                <Text style={s.empty}>
+                  سەبەتەکەت بەتاڵە.
+                </Text>
+
+                <TouchableOpacity
+                  style={s.goldBtn}
+                  onPress={() =>
+                    setTab("home")
+                  }
+                >
+                  <Text style={s.goldText}>
+                    بینینی بەرهەمەکان
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                {cart.map((product, index) => (
+                  <View
+                    key={`${product.id}-${index}`}
+                    style={s.cartItem}
+                  >
+                    <Image
+                      source={{
+                        uri: product.image,
+                      }}
+                      style={s.cartImage}
+                    />
+
+                    <View style={s.cartInfo}>
+                      <Text
+                        style={s.cartName}
+                        numberOfLines={2}
+                      >
+                        {product.name}
+                      </Text>
+
+                      <Text style={s.cartPrice}>
+                        {Number(
+                          product.price
+                        ).toLocaleString()}{" "}
+                        IQD
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={() =>
+                        removeFromCart(index)
+                      }
+                    >
+                      <Text
+                        style={s.removeText}
+                      >
+                        🗑️
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                <View style={s.totalBox}>
+                  <Text style={s.totalLabel}>
+                    کۆی گشتی
+                  </Text>
+
+                  <Text style={s.totalPrice}>
+                    {total.toLocaleString()} IQD
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={s.goldBtn}
+                  onPress={openCheckout}
+                >
+                  <Text style={s.goldText}>
+                    📦 تەواوکردنی داواکاری
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </ScrollView>
+        </View>
+      )}
+
+      {tab === "profile" && (
+        <ScrollView
+          contentContainerStyle={s.pad}
+        >
+          <Text style={s.pageTitle}>
+            👤 Shwshawaty ASYA
+          </Text>
+
+          <View style={s.profileBox}>
+            <Text style={s.profileLogo}>
+              ASYA
+            </Text>
+
+            <Text style={s.profileTitle}>
+              بەخێربێیت بۆ Shwshawaty ASYA
+            </Text>
+
+            <Text style={s.profileText}>
+              بۆ بینینی بەرهەمەکان، سەبەت و
+              ناردنی داواکاری لەگەڵمان بەکاربهێنە.
+            </Text>
+
+            <TouchableOpacity
+              style={s.goldBtn}
+              onPress={() => setTab("home")}
+            >
+              <Text style={s.goldText}>
+                🛍️ دەستپێکردنی کڕین
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={s.adminProfileBtn}
+            onPress={() => setShowAdmin(true)}
+          >
+            <Text style={s.adminProfileText}>
+              ⚙️ بەشی بەڕێوەبەر
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+
+      {selected && (
+        <View style={s.modalOverlay}>
+          <View style={s.modal}>
+            <TouchableOpacity
+              style={s.close}
+              onPress={() =>
+                setSelected(null)
+              }
+            >
+              <Text style={s.closeText}>
+                ✕
+              </Text>
+            </TouchableOpacity>
+
+            <Image
+              source={{
+                uri: selected.image,
+              }}
+              style={s.modalImage}
+            />
+
+            <Text style={s.modalTitle}>
+              {selected.name}
+            </Text>
+
+            <Text style={s.modalCategory}>
+              {selected.category}
+            </Text>
+
+            <Text style={s.modalPrice}>
+              {Number(
+                selected.price
+              ).toLocaleString()}{" "}
+              IQD
+            </Text>
+
+            <TouchableOpacity
+              style={s.goldBtn}
+              onPress={() => {
+                addToCart(selected);
+                setSelected(null);
+              }}
+            >
+              <Text style={s.goldText}>
+                🛒 زیادکردن بۆ سەبەت
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      <View style={s.bottomNav}>
+        <TouchableOpacity
+          style={s.navItem}
+          onPress={() => setTab("home")}
+        >
+          <Text style={s.navIcon}>🏠</Text>
+          <Text style={s.navText}>
+            سەرەکی
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={s.navItem}
+          onPress={() => setTab("cart")}
+        >
+          <View>
+            <Text style={s.navIcon}>🛒</Text>
+
+            {cart.length > 0 && (
+              <View style={s.badge}>
+                <Text style={s.badgeText}>
+                  {cart.length}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <Text style={s.navText}>
+            سەبەت
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={s.navItem}
+          onPress={() => setTab("profile")}
+        >
+          <Text style={s.navIcon}>👤</Text>
+          <Text style={s.navText}>
+            پڕۆفایل
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const s = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#111111",
+  },
+
+  flex: {
+    flex: 1,
+  },
+
+  header: {
+    height: 65,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#292929",
+  },
+
+  logo: {
+    color: "#d6b56b",
+    fontSize: 21,
+    fontWeight: "800",
+  },
+
+  adminIcon: {
+    fontSize: 22,
+  },
+
+  searchBox: {
+    margin: 14,
+    backgroundColor: "#1d1d1d",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#303030",
+  },
+
+  searchInput: {
+    color: "#fff",
+    paddingHorizontal: 16,
+    height: 48,
+    textAlign: "right",
+    fontSize: 15,
+  },
+
+  cats: {
+    paddingHorizontal: 10,
+    maxHeight: 52,
+  },
+
+  cat: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: "#202020",
+  },
+
+  catActive: {
+    backgroundColor: "#d6b56b",
+  },
+
+  catText: {
+    color: "#ddd",
+    fontSize: 13,
+  },
+
+  catTextActive: {
+    color: "#111",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  grid: {
+    padding: 10,
+    paddingBottom: 100,
+  },
+
+  card: {
+    flex: 1,
+    margin: 6,
+    backgroundColor: "#1d1d1d",
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#2c2c2c",
+  },
+
+  productImage: {
+    width: "100%",
+    height: 155,
+    backgroundColor: "#292929",
+  },
+
+  cardBody: {
+    padding: 10,
+  },
+
+  productName: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+    minHeight: 40,
+    textAlign: "right",
+  },
+
+  productPrice: {
+    color: "#d6b56b",
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 7,
+    textAlign: "right",
+  },
+
+  addBtn: {
+    marginTop: 9,
+    backgroundColor: "#d6b56b",
+    borderRadius: 9,
+    paddingVertical: 9,
+    alignItems: "center",
+  },
+
+  addBtnText: {
+    color: "#111",
+    fontWeight: "800",
+  },
+
+  bottomNav: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 72,
+    backgroundColor: "#181818",
+    borderTopWidth: 1,
+    borderTopColor: "#303030",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+
+  navItem: {
+    alignItems: "center",
+    minWidth: 80,
+  },
+
+  navIcon: {
+    fontSize: 22,
+  },
+
+  navText: {
+    color: "#aaa",
+    fontSize: 11,
+    marginTop: 3,
+  },
+
+  badge: {
+    position: "absolute",
+    right: -9,
+    top: -5,
+    backgroundColor: "#d6b56b",
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  badgeText: {
+    color: "#111",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+
+  pad: {
+    padding: 18,
+    paddingBottom: 100,
+  },
+
+  pageTitle: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 18,
+    textAlign: "right",
+  },
+
+  desc: {
+    color: "#aaa",
+    lineHeight: 23,
+    marginBottom: 18,
+    textAlign: "right",
+  },
+
+  label: {
+    color: "#ddd",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 12,
+    marginBottom: 7,
+    textAlign: "right",
+  },
+
+  input: {
+    backgroundColor: "#1d1d1d",
+    borderWidth: 1,
+    borderColor: "#343434",
+    borderRadius: 10,
+    color: "#fff",
+    paddingHorizontal: 14,
+    minHeight: 48,
+    textAlign: "right",
+  },
+
+  textArea: {
+    minHeight: 90,
+    textAlignVertical: "top",
+  },
+
+  goldBtn: {
+    backgroundColor: "#d6b56b",
+    borderRadius: 11,
+    minHeight: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 15,
+    marginTop: 15,
+  },
+
+  goldText: {
+    color: "#111",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+
+  cancelBtn: {
+    backgroundColor: "#292929",
+    borderRadius: 11,
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+
+  cancelText: {
+    color: "#ddd",
+    fontWeight: "700",
+  },
+
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 30,
+  },
+
+  loading: {
+    color: "#d6b56b",
+    fontSize: 17,
+  },
+
+  empty: {
+    color: "#888",
+    textAlign: "center",
+    fontSize: 16,
+    marginVertical: 20,
+  },
+
+  emptyCart: {
+    alignItems: "center",
+    paddingTop: 50,
+  },
+
+  emptyIcon: {
+    fontSize: 55,
+    marginBottom: 15,
+  },
+
+  cartItem: {
+    backgroundColor: "#1d1d1d",
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  cartImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 9,
+  },
+
+  cartInfo: {
+    flex: 1,
+    paddingHorizontal: 10,
+  },
+
+  cartName: {
+    color: "#fff",
+    fontWeight: "700",
+    textAlign: "right",
+  },
+
+  cartPrice: {
+    color: "#d6b56b",
+    fontWeight: "800",
+    textAlign: "right",
+    marginTop: 6,
+  },
+
+  removeText: {
+    fontSize: 22,
+    padding: 7,
+  },
+
+  totalBox: {
+    backgroundColor: "#1d1d1d",
+    borderRadius: 12,
+    padding: 17,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#303030",
+  },
+
+  totalLabel: {
+    color: "#aaa",
+    textAlign: "right",
+    fontSize: 14,
+  },
+
+  totalPrice: {
+    color: "#d6b56b",
+    textAlign: "right",
+    fontSize: 24,
+    fontWeight: "900",
+    marginTop: 5,
+  },
+
+  profileBox: {
+    backgroundColor: "#1d1d1d",
+    borderRadius: 15,
+    padding: 22,
+    alignItems: "center",
+  },
+
+  profileLogo: {
+    color: "#d6b56b",
+    fontSize: 45,
+    fontWeight: "900",
+  },
+
+  profileTitle: {
+    color: "#fff",
+    fontSize: 19,
+    fontWeight: "800",
+    marginTop: 15,
+    textAlign: "center",
+  },
+
+  profileText: {
+    color: "#aaa",
+    lineHeight: 23,
+    marginTop: 10,
+    textAlign: "center",
+  },
+
+  adminProfileBtn: {
+    backgroundColor: "#1d1d1d",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 15,
+    alignItems: "center",
+  },
+
+  adminProfileText: {
+    color: "#d6b56b",
+    fontWeight: "800",
+  },
+
+  adminBox: {
+    backgroundColor: "#1d1d1d",
+    borderRadius: 14,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#303030",
+  },
+
+  adminBoxTitle: {
+    color: "#d6b56b",
+    fontSize: 18,
+    fontWeight: "800",
+    textAlign: "right",
+    marginBottom: 10,
+  },
+
+  imageText: {
+    color: "#888",
+    textAlign: "right",
+    marginBottom: 5,
+  },
+
+  preview: {
+    width: "100%",
+    height: 180,
+    borderRadius: 10,
+    marginTop: 12,
+  },
+
+  adminListTitle: {
+    color: "#fff",
+    fontSize: 19,
+    fontWeight: "800",
+    marginTop: 22,
+    marginBottom: 12,
+    textAlign: "right",
+  },
+
+  adminProduct: {
+    backgroundColor: "#1d1d1d",
+    borderRadius: 12,
+    padding: 9,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  adminProductImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 9,
+  },
+
+  adminProductInfo: {
+    flex: 1,
+    paddingHorizontal: 9,
+  },
+
+  adminProductName: {
+    color: "#fff",
+    fontWeight: "700",
+    textAlign: "right",
+  },
+
+  adminProductPrice: {
+    color: "#d6b56b",
+    fontWeight: "800",
+    textAlign: "right",
+    marginTop: 4,
+  },
+
+  adminProductCategory: {
+    color: "#888",
+    fontSize: 11,
+    textAlign: "right",
+    marginTop: 3,
+  },
+
+  adminActions: {
+    gap: 7,
+  },
+
+  editBtn: {
+    backgroundColor: "#292929",
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  editText: {
+    fontSize: 17,
+  },
+
+  deleteSmallBtn: {
+    backgroundColor: "#292929",
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  deleteSmallText: {
+    fontSize: 17,
+  },
+
+  back: {
+    color: "#d6b56b",
+    fontSize: 16,
+    padding: 16,
+    textAlign: "right",
+  },
+
+  modalOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+
+  modal: {
+    width: "100%",
+    maxWidth: 430,
+    backgroundColor: "#1d1d1d",
+    borderRadius: 18,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#383838",
+  },
+
+  close: {
+    position: "absolute",
+    right: 12,
+    top: 10,
+    zIndex: 5,
+    backgroundColor: "#292929",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  closeText: {
+    color: "#fff",
+    fontSize: 18,
+  },
+
+  modalImage: {
+    width: "100%",
+    height: 280,
+    borderRadius: 12,
+    backgroundColor: "#292929",
+  },
+
+  modalTitle: {
+    color: "#fff",
+    fontSize: 21,
+    fontWeight: "800",
+    marginTop: 15,
+    textAlign: "right",
+  },
+
+  modalCategory: {
+    color: "#888",
+    marginTop: 6,
+    textAlign: "right",
+  },
+
+  modalPrice: {
+    color: "#d6b56b",
+    fontSize: 22,
+    fontWeight: "900",
+    marginTop: 8,
+    textAlign: "right",
+  },
+});
