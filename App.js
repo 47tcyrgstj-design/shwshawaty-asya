@@ -1,8 +1,4 @@
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import {
   SafeAreaView,
@@ -84,9 +80,7 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [selected, setSelected] = useState(null);
 
-  const [products, setProducts] = useState(
-    initialProducts
-  );
+  const [products, setProducts] = useState(initialProducts);
 
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminLogin, setAdminLogin] = useState(false);
@@ -98,17 +92,13 @@ export default function App() {
     useState("کاڵای ناوماڵ");
   const [newImage, setNewImage] = useState("");
 
-  const [showCheckout, setShowCheckout] =
-    useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
-  const [customerName, setCustomerName] =
-    useState("");
-  const [customerPhone, setCustomerPhone] =
-    useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] =
     useState("");
-  const [customerNote, setCustomerNote] =
-    useState("");
+  const [customerNote, setCustomerNote] = useState("");
 
   useEffect(() => {
     loadProducts();
@@ -160,10 +150,7 @@ export default function App() {
   }, [products, category, query]);
 
   const addToCart = (product) => {
-    setCart((current) => [
-      ...current,
-      product,
-    ]);
+    setCart((current) => [...current, product]);
 
     Alert.alert(
       "زیادکرا ✅",
@@ -178,8 +165,7 @@ export default function App() {
   };
 
   const total = cart.reduce(
-    (sum, product) =>
-      sum + Number(product.price),
+    (sum, product) => sum + Number(product.price),
     0
   );
 
@@ -367,10 +353,9 @@ export default function App() {
           text: "بەڵێ، بیسڕەوە",
           style: "destructive",
           onPress: async () => {
-            const updated =
-              products.filter(
-                (p) => p.id !== product.id
-              );
+            const updated = products.filter(
+              (p) => p.id !== product.id
+            );
 
             await saveProducts(updated);
             setSelected(null);
@@ -385,7 +370,11 @@ export default function App() {
   if (showAdmin) {
     return (
       <SafeAreaView style={s.safe}>
-        <ScrollView>
+        <ScrollView
+          contentContainerStyle={{
+            paddingBottom: 40,
+          }}
+        >
           <TouchableOpacity
             onPress={() => {
               setShowAdmin(false);
@@ -444,9 +433,7 @@ export default function App() {
                 >
                   {newImage ? (
                     <Image
-                      source={{
-                        uri: newImage,
-                      }}
+                      source={{ uri: newImage }}
                       style={s.preview}
                     />
                   ) : (
@@ -456,8 +443,7 @@ export default function App() {
                       </Text>
 
                       <Text style={s.imageText}>
-                        وێنە لە Gallery
-                        هەڵبژێرە
+                        وێنە لە Gallery هەڵبژێرە
                       </Text>
                     </>
                   )}
@@ -547,7 +533,11 @@ export default function App() {
   if (showCheckout) {
     return (
       <SafeAreaView style={s.safe}>
-        <ScrollView>
+        <ScrollView
+          contentContainerStyle={{
+            paddingBottom: 40,
+          }}
+        >
           <TouchableOpacity
             onPress={() =>
               setShowCheckout(false)
@@ -649,7 +639,11 @@ export default function App() {
   if (selected) {
     return (
       <SafeAreaView style={s.safe}>
-        <ScrollView>
+        <ScrollView
+          contentContainerStyle={{
+            paddingBottom: 40,
+          }}
+        >
           <TouchableOpacity
             onPress={() => setSelected(null)}
           >
@@ -659,9 +653,7 @@ export default function App() {
           </TouchableOpacity>
 
           <Image
-            source={{
-              uri: selected.image,
-            }}
+            source={{ uri: selected.image }}
             style={s.hero}
           />
 
@@ -709,6 +701,62 @@ export default function App() {
     );
   }
 
+  /* ================= HOME HEADER ================= */
+
+  const HomeHeader = () => (
+    <>
+      <View style={s.banner}>
+        <Text style={s.bannerTitle}>
+          بەخێربێیت بۆ ASYA
+        </Text>
+
+        <Text style={s.bannerSub}>
+          جوانی بۆ ماڵەکەت
+        </Text>
+      </View>
+
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="بگەڕێ بۆ بەرهەم..."
+        placeholderTextColor="#777"
+        style={s.search}
+      />
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.cats}
+      >
+        {cats.map((c) => (
+          <TouchableOpacity
+            key={c}
+            onPress={() => setCategory(c)}
+            style={[
+              s.cat,
+              category === c &&
+                s.catActive,
+            ]}
+          >
+            <Text
+              style={
+                category === c
+                  ? s.catTextActive
+                  : s.catText
+              }
+            >
+              {c}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <Text style={s.section}>
+        بەرهەمەکان
+      </Text>
+    </>
+  );
+
   /* ================= MAIN APP ================= */
 
   return (
@@ -724,113 +772,67 @@ export default function App() {
       </View>
 
       {tab === "home" && (
-        <ScrollView>
-          <View style={s.banner}>
-            <Text style={s.bannerTitle}>
-              بەخێربێیت بۆ ASYA
-            </Text>
-
-            <Text style={s.bannerSub}>
-              جوانی بۆ ماڵەکەت
-            </Text>
-          </View>
-
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="بگەڕێ بۆ بەرهەم..."
-            placeholderTextColor="#777"
-            style={s.search}
-          />
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={s.cats}
-          >
-            {cats.map((c) => (
+        <FlatList
+          data={filtered}
+          numColumns={2}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={s.card}>
               <TouchableOpacity
-                key={c}
-                onPress={() => setCategory(c)}
-                style={[
-                  s.cat,
-                  category === c &&
-                    s.catActive,
-                ]}
+                onPress={() =>
+                  setSelected(item)
+                }
               >
+                <Image
+                  source={{ uri: item.image }}
+                  style={s.cardImg}
+                />
+
                 <Text
-                  style={
-                    category === c
-                      ? s.catTextActive
-                      : s.catText
-                  }
+                  style={s.cardName}
+                  numberOfLines={2}
                 >
-                  {c}
+                  {item.name}
+                </Text>
+
+                <Text style={s.cardPrice}>
+                  {Number(
+                    item.price
+                  ).toLocaleString()}{" "}
+                  IQD
                 </Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
 
-          <Text style={s.section}>
-            بەرهەمەکان
-          </Text>
-
-          <FlatList
-            data={filtered}
-            numColumns={2}
-            scrollEnabled={false}
-            keyExtractor={(item) => item.id}
-            columnWrapperStyle={{
-              gap: 12,
-            }}
-            contentContainerStyle={s.grid}
-            renderItem={({ item }) => (
-              <View style={s.card}>
-                <TouchableOpacity
-                  onPress={() =>
-                    setSelected(item)
-                  }
-                >
-                  <Image
-                    source={{
-                      uri: item.image,
-                    }}
-                    style={s.cardImg}
-                  />
-
-                  <Text
-                    style={s.cardName}
-                    numberOfLines={2}
-                  >
-                    {item.name}
-                  </Text>
-
-                  <Text style={s.cardPrice}>
-                    {Number(
-                      item.price
-                    ).toLocaleString()}{" "}
-                    IQD
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={s.smallBtn}
-                  onPress={() =>
-                    addToCart(item)
-                  }
-                >
-                  <Text style={s.smallBtnText}>
-                    + سەبەت
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          />
-        </ScrollView>
+              <TouchableOpacity
+                style={s.smallBtn}
+                onPress={() =>
+                  addToCart(item)
+                }
+              >
+                <Text style={s.smallBtnText}>
+                  + سەبەت
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          ListHeaderComponent={HomeHeader}
+          contentContainerStyle={s.grid}
+          columnWrapperStyle={s.columnWrapper}
+          showsVerticalScrollIndicator={true}
+          ListEmptyComponent={
+            <Text style={s.empty}>
+              هیچ بەرهەمێک نەدۆزرایەوە.
+            </Text>
+          }
+        />
       )}
 
       {tab === "cart" && (
-        <ScrollView>
+        <ScrollView
+          contentContainerStyle={{
+            paddingBottom: 90,
+          }}
+        >
           <View style={s.pad}>
             <Text style={s.pageTitle}>
               سەبەت 🛒
@@ -895,7 +897,11 @@ export default function App() {
       )}
 
       {tab === "profile" && (
-        <ScrollView>
+        <ScrollView
+          contentContainerStyle={{
+            paddingBottom: 90,
+          }}
+        >
           <View style={s.pad}>
             <Text style={s.pageTitle}>
               پڕۆفایل 👤
@@ -1072,7 +1078,12 @@ const s = StyleSheet.create({
 
   grid: {
     padding: 16,
+    paddingBottom: 90,
+  },
+
+  columnWrapper: {
     gap: 12,
+    marginBottom: 12,
   },
 
   card: {
@@ -1149,6 +1160,7 @@ const s = StyleSheet.create({
   empty: {
     color: "#aaa",
     fontSize: 17,
+    padding: 16,
   },
 
   row: {
