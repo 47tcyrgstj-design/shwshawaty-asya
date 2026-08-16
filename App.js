@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+
 import {
   SafeAreaView,
   View,
@@ -12,6 +13,7 @@ import {
   Alert,
   Linking,
 } from "react-native";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 
@@ -89,17 +91,12 @@ export default function App() {
     useState("کاڵای ناوماڵ");
   const [newImage, setNewImage] = useState("");
 
-  const [showCheckout, setShowCheckout] =
-    useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
-  const [customerName, setCustomerName] =
-    useState("");
-  const [customerPhone, setCustomerPhone] =
-    useState("");
-  const [customerAddress, setCustomerAddress] =
-    useState("");
-  const [customerNote, setCustomerNote] =
-    useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerNote, setCustomerNote] = useState("");
 
   useEffect(() => {
     loadProducts();
@@ -124,6 +121,7 @@ export default function App() {
         "asya_products",
         JSON.stringify(list)
       );
+
       setProducts(list);
     } catch (error) {
       Alert.alert(
@@ -134,21 +132,23 @@ export default function App() {
   };
 
   const filtered = useMemo(() => {
-    return products.filter(
-      (p) =>
-        (category === "هەموو" ||
-          p.category === category) &&
-        p.name
-          .toLowerCase()
-          .includes(query.toLowerCase())
-    );
+    const search = query.trim().toLowerCase();
+
+    return products.filter((p) => {
+      const categoryOK =
+        category === "هەموو" ||
+        p.category === category;
+
+      const searchOK =
+        !search ||
+        p.name.toLowerCase().includes(search);
+
+      return categoryOK && searchOK;
+    });
   }, [products, category, query]);
 
   const addToCart = (product) => {
-    setCart((current) => [
-      ...current,
-      product,
-    ]);
+    setCart((current) => [...current, product]);
 
     Alert.alert(
       "زیادکرا ✅",
@@ -205,7 +205,9 @@ export default function App() {
     const items = cart
       .map(
         (p, i) =>
-          `${i + 1}. ${p.name} - ${p.price.toLocaleString()} IQD`
+          `${i + 1}. ${p.name} - ${Number(
+            p.price
+          ).toLocaleString()} IQD`
       )
       .join("\n");
 
@@ -318,12 +320,10 @@ export default function App() {
       image: newImage,
     };
 
-    const updated = [
+    await saveProducts([
       product,
       ...products,
-    ];
-
-    await saveProducts(updated);
+    ]);
 
     setNewName("");
     setNewPrice("");
@@ -353,8 +353,7 @@ export default function App() {
           onPress: async () => {
             const updated =
               products.filter(
-                (p) =>
-                  p.id !== product.id
+                (p) => p.id !== product.id
               );
 
             await saveProducts(updated);
@@ -426,9 +425,7 @@ export default function App() {
                 >
                   {newImage ? (
                     <Image
-                      source={{
-                        uri: newImage,
-                      }}
+                      source={{ uri: newImage }}
                       style={s.preview}
                     />
                   ) : (
@@ -436,6 +433,7 @@ export default function App() {
                       <Text style={s.camera}>
                         📷
                       </Text>
+
                       <Text style={s.imageText}>
                         وێنە لە Gallery
                         هەڵبژێرە
@@ -480,8 +478,7 @@ export default function App() {
                 >
                   {cats
                     .filter(
-                      (x) =>
-                        x !== "هەموو"
+                      (x) => x !== "هەموو"
                     )
                     .map((c) => (
                       <TouchableOpacity
@@ -629,9 +626,7 @@ export default function App() {
       <SafeAreaView style={s.safe}>
         <ScrollView>
           <TouchableOpacity
-            onPress={() =>
-              setSelected(null)
-            }
+            onPress={() => setSelected(null)}
           >
             <Text style={s.back}>
               ‹ گەڕانەوە
@@ -639,9 +634,7 @@ export default function App() {
           </TouchableOpacity>
 
           <Image
-            source={{
-              uri: selected.image,
-            }}
+            source={{ uri: selected.image }}
             style={s.hero}
           />
 
@@ -651,7 +644,10 @@ export default function App() {
             </Text>
 
             <Text style={s.price}>
-              {selected.price.toLocaleString()} IQD
+              {Number(
+                selected.price
+              ).toLocaleString()}{" "}
+              IQD
             </Text>
 
             <Text style={s.desc}>
@@ -689,9 +685,7 @@ export default function App() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <Text style={s.brand}>
-          ASYA
-        </Text>
+        <Text style={s.brand}>ASYA</Text>
 
         <Text style={s.sub}>
           Shwshawaty ASYA
@@ -726,9 +720,7 @@ export default function App() {
             {cats.map((c) => (
               <TouchableOpacity
                 key={c}
-                onPress={() =>
-                  setCategory(c)
-                }
+                onPress={() => setCategory(c)}
                 style={[
                   s.cat,
                   category === c &&
@@ -762,29 +754,31 @@ export default function App() {
             }}
             contentContainerStyle={s.grid}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={s.card}
-                onPress={() =>
-                  setSelected(item)
-                }
-              >
-                <Image
-                  source={{
-                    uri: item.image,
-                  }}
-                  style={s.cardImg}
-                />
-
-                <Text
-                  style={s.cardName}
-                  numberOfLines={2}
+              <View style={s.card}>
+                <TouchableOpacity
+                  onPress={() =>
+                    setSelected(item)
+                  }
                 >
-                  {item.name}
-                </Text>
+                  <Image
+                    source={{ uri: item.image }}
+                    style={s.cardImg}
+                  />
 
-                <Text style={s.cardPrice}>
-                  {item.price.toLocaleString()} IQD
-                </Text>
+                  <Text
+                    style={s.cardName}
+                    numberOfLines={2}
+                  >
+                    {item.name}
+                  </Text>
+
+                  <Text style={s.cardPrice}>
+                    {Number(
+                      item.price
+                    ).toLocaleString()}{" "}
+                    IQD
+                  </Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={s.smallBtn}
@@ -796,70 +790,75 @@ export default function App() {
                     + سەبەت
                   </Text>
                 </TouchableOpacity>
-              </TouchableOpacity>
+              </View>
             )}
           />
         </ScrollView>
       )}
 
       {tab === "cart" && (
-        <View style={s.pad}>
-          <Text style={s.pageTitle}>
-            سەبەت 🛒
-          </Text>
-
-          {cart.length === 0 ? (
-            <Text style={s.empty}>
-              سەبەتەکەت بەتاڵە.
+        <ScrollView>
+          <View style={s.pad}>
+            <Text style={s.pageTitle}>
+              سەبەت 🛒
             </Text>
-          ) : (
-            <>
-              {cart.map((p, i) => (
-                <View
-                  style={s.row}
-                  key={`${p.id}-${i}`}
-                >
-                  <Text style={s.rowName}>
-                    {p.name}
-                  </Text>
 
-                  <Text style={s.rowPrice}>
-                    {p.price.toLocaleString()} IQD
-                  </Text>
-
-                  <TouchableOpacity
-                    onPress={() =>
-                      removeFromCart(i)
-                    }
+            {cart.length === 0 ? (
+              <Text style={s.empty}>
+                سەبەتەکەت بەتاڵە.
+              </Text>
+            ) : (
+              <>
+                {cart.map((p, i) => (
+                  <View
+                    style={s.row}
+                    key={`${p.id}-${i}`}
                   >
-                    <Text style={s.remove}>
-                      ✕
+                    <Text style={s.rowName}>
+                      {p.name}
                     </Text>
-                  </TouchableOpacity>
+
+                    <Text style={s.rowPrice}>
+                      {Number(
+                        p.price
+                      ).toLocaleString()}{" "}
+                      IQD
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() =>
+                        removeFromCart(i)
+                      }
+                    >
+                      <Text style={s.remove}>
+                        ✕
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                <View style={s.totalBox}>
+                  <Text style={s.totalLabel}>
+                    کۆی گشتی
+                  </Text>
+
+                  <Text style={s.totalPrice}>
+                    {total.toLocaleString()} IQD
+                  </Text>
                 </View>
-              ))}
 
-              <View style={s.totalBox}>
-                <Text style={s.totalLabel}>
-                  کۆی گشتی
-                </Text>
-
-                <Text style={s.totalPrice}>
-                  {total.toLocaleString()} IQD
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={s.goldBtn}
-                onPress={openCheckout}
-              >
-                <Text style={s.goldText}>
-                  📲 تەواوکردنی داواکاری
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+                <TouchableOpacity
+                  style={s.goldBtn}
+                  onPress={openCheckout}
+                >
+                  <Text style={s.goldText}>
+                    📲 تەواوکردنی داواکاری
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </ScrollView>
       )}
 
       {tab === "profile" && (
@@ -917,9 +916,7 @@ export default function App() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() =>
-            setTab("profile")
-          }
+          onPress={() => setTab("profile")}
         >
           <Text
             style={
