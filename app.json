@@ -18,6 +18,9 @@
       "output": "single",
       "favicon": "./icon.png"
     },
+    "experiments": {
+      "baseUrl": "/shwshawaty-asya"
+    },
     "extra": {
       "eas": {
         "projectId": "5866a723-918e-413e-91c8-6b83fe1555c5"
