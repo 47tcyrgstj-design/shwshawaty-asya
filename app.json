@@ -1,10 +1,25 @@
-import React from "react";
-import { SafeAreaView, Text } from "react-native";
-
-export default function App() {
-  return (
-    <SafeAreaView>
-      <Text>Shwshawaty ASYA</Text>
-    </SafeAreaView>
-  );
+{
+  "expo": {
+    "name": "Shwshawaty ASYA",
+    "slug": "shwshawaty-asya1",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.asya.shwshawaty"
+    },
+    "android": {
+      "package": "com.asya.shwshawaty"
+    },
+    "web": {
+      "favicon": "./icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5866a723-918e-413e-91c8-6b83fe1555c5"
+      }
+    }
+  }
 }
