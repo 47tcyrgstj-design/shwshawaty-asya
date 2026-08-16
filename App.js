@@ -114,7 +114,7 @@ export default function App() {
         setProducts(JSON.parse(saved));
       }
     } catch (error) {
-      console.log(error);
+      console.log("Load error:", error);
     }
   };
 
@@ -124,7 +124,6 @@ export default function App() {
         "asya_products",
         JSON.stringify(list)
       );
-
       setProducts(list);
     } catch (error) {
       Alert.alert(
@@ -206,7 +205,7 @@ export default function App() {
     const items = cart
       .map(
         (p, i) =>
-          `${i + 1}. ${p.name}\n   ${p.price.toLocaleString()} IQD`
+          `${i + 1}. ${p.name} - ${p.price.toLocaleString()} IQD`
       )
       .join("\n");
 
@@ -230,7 +229,7 @@ export default function App() {
     } catch (error) {
       Alert.alert(
         "هەڵە",
-        "WhatsApp نەکرایەوە. تکایە دڵنیابە لەوەی WhatsApp لەسەر ئامێرەکەت هەیە."
+        "WhatsApp نەکرایەوە."
       );
     }
   };
@@ -437,7 +436,6 @@ export default function App() {
                       <Text style={s.camera}>
                         📷
                       </Text>
-
                       <Text style={s.imageText}>
                         وێنە لە Gallery
                         هەڵبژێرە
@@ -477,9 +475,7 @@ export default function App() {
 
                 <ScrollView
                   horizontal
-                  showsHorizontalScrollIndicator={
-                    false
-                  }
+                  showsHorizontalScrollIndicator={false}
                   style={s.cats}
                 >
                   {cats
@@ -714,17 +710,6 @@ export default function App() {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={s.addProductBtn}
-            onPress={() =>
-              setShowAdmin(true)
-            }
-          >
-            <Text style={s.addProductText}>
-              🔐 زیادکردنی بەرهەم
-            </Text>
-          </TouchableOpacity>
-
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -807,9 +792,7 @@ export default function App() {
                     addToCart(item)
                   }
                 >
-                  <Text
-                    style={s.smallBtnText}
-                  >
+                  <Text style={s.smallBtnText}>
                     + سەبەت
                   </Text>
                 </TouchableOpacity>
@@ -880,15 +863,28 @@ export default function App() {
       )}
 
       {tab === "profile" && (
-        <View style={s.pad}>
-          <Text style={s.pageTitle}>
-            پڕۆفایل 👤
-          </Text>
+        <ScrollView>
+          <View style={s.pad}>
+            <Text style={s.pageTitle}>
+              پڕۆفایل 👤
+            </Text>
 
-          <Text style={s.desc}>
-            بەخێربێیت بۆ Shwshawaty ASYA.
-          </Text>
-        </View>
+            <Text style={s.desc}>
+              بەخێربێیت بۆ Shwshawaty ASYA.
+            </Text>
+
+            <TouchableOpacity
+              style={s.addProductBtn}
+              onPress={() =>
+                setShowAdmin(true)
+              }
+            >
+              <Text style={s.addProductText}>
+                🔐 زیادکردنی بەرهەم
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       )}
 
       <View style={s.nav}>
@@ -984,8 +980,7 @@ const s = StyleSheet.create({
   },
 
   addProductBtn: {
-    marginHorizontal: 16,
-    marginBottom: 10,
+    marginTop: 20,
     padding: 14,
     borderRadius: 12,
     backgroundColor: "#d7a52b",
