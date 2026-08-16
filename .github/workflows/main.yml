@@ -25,4 +25,18 @@ jobs:
       - name: Build APK
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --profile preview --non-interactive
+        run: eas build --platform android --profile preview --non-interactive --wait
+
+      - name: Download APK
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build:list --platform android --status finished --limit 1 --json > build.json
+          APK_URL=$(node -e "const fs=require('fs'); const b=JSON.parse(fs.readFileSync('build.json')); console.log(b[0].artifacts.buildUrl)")
+          curl -L "$APK_URL" -o app.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: shwshawaty-asya-apk
+          path: app.apk
