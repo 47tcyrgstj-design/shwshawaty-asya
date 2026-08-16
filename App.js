@@ -14,7 +14,16 @@ import {
   Linking,
 } from "react-native";
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { db } from "./firebase";
+
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
 
 const ADMIN_PASSWORD = "tt69fu35T";
 const WHATSAPP = "9647718758585";
@@ -80,6 +89,7 @@ export default function App() {
   const [selected, setSelected] = useState(null);
 
   const [products, setProducts] = useState(initialProducts);
+  const [loading, setLoading] = useState(true);
 
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminLogin, setAdminLogin] = useState(false);
@@ -105,35 +115,22 @@ export default function App() {
 
   const loadProducts = async () => {
     try {
-      const saved = await AsyncStorage.getItem("asya_products");
+      const snapshot = await getDocs(
+        collection(db, "products")
+      );
 
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      const data = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+      }));
 
-        if (Array.isArray(parsed)) {
-          setProducts(parsed);
-        }
+      if (data.length > 0) {
+        setProducts(data);
       }
     } catch (error) {
-      console.log("Load error:", error);
-    }
-  };
-
-  const saveProducts = async (list) => {
-    try {
-      await AsyncStorage.setItem(
-        "asya_products",
-        JSON.stringify(list)
-      );
-
-      setProducts(list);
-    } catch (error) {
-      console.log("Save error:", error);
-
-      Alert.alert(
-        "هەڵە",
-        "نەتوانرا بەرهەمەکان هەڵبگیرێن."
-      );
+      console.log("Firebase load error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -142,7 +139,8 @@ export default function App() {
 
     return products.filter((p) => {
       const categoryOK =
-        category === "هەموو" || p.category === category;
+        category === "هەموو" ||
+        p.category === category;
 
       const name =
         typeof p.name === "string"
@@ -172,7 +170,8 @@ export default function App() {
   };
 
   const total = cart.reduce(
-    (sum, product) => sum + Number(product.price || 0),
+    (sum, product) =>
+      sum + Number(product.price || 0),
     0
   );
 
@@ -195,12 +194,18 @@ export default function App() {
     }
 
     if (!customerPhone.trim()) {
-      Alert.alert("هەڵە", "ژمارەی مۆبایلت بنووسە.");
+      Alert.alert(
+        "هەڵە",
+        "ژمارەی مۆبایلت بنووسە."
+      );
       return;
     }
 
     if (!customerAddress.trim()) {
-      Alert.alert("هەڵە", "ناونیشانت بنووسە.");
+      Alert.alert(
+        "هەڵە",
+        "ناونیشانت بنووسە."
+      );
       return;
     }
 
@@ -256,9 +261,13 @@ export default function App() {
     setNewCategory("کاڵای ناوماڵ");
     setNewImage("");
     setEditingProduct(null);
-  };
-
-  const addProduct = async () => {
+  };  const resetProductForm = () => {
+    setNewName("");
+    setNewPrice("");
+    setNewCategory("کاڵای ناوماڵ");
+    setNewImage("");
+    setEditingProduct(null);
+  };  const addProduct = async () => {
     if (!newName.trim()) {
       Alert.alert("هەڵە", "ناوی بەرهەم بنووسە.");
       return;
@@ -280,22 +289,43 @@ export default function App() {
       return;
     }
 
-    const product = {
-      id: Date.now().toString(),
-      name: newName.trim(),
-      price: Number(newPrice),
-      category: newCategory,
-      image: newImage.trim(),
-    };
+    try {
+      const productData = {
+        name: newName.trim(),
+        price: Number(newPrice),
+        category: newCategory,
+        image: newImage.trim(),
+      };
 
-    await saveProducts([product, ...products]);
+      const docRef = await addDoc(
+        collection(db, "products"),
+        productData
+      );
 
-    resetProductForm();
+      const product = {
+        id: docRef.id,
+        ...productData,
+      };
 
-    Alert.alert(
-      "سەرکەوتوو بوو ✅",
-      "بەرهەمەکە زیاد کرا."
-    );
+      setProducts((current) => [
+        product,
+        ...current,
+      ]);
+
+      resetProductForm();
+
+      Alert.alert(
+        "سەرکەوتوو بوو ✅",
+        "بەرهەمەکە زیاد کرا."
+      );
+    } catch (error) {
+      console.log("Add product error:", error);
+
+      Alert.alert(
+        "هەڵە",
+        "نەتوانرا بەرهەمەکە زیاد بکرێت."
+      );
+    }
   };
 
   const startEditProduct = (product) => {
@@ -330,26 +360,47 @@ export default function App() {
       return;
     }
 
-    const updated = products.map((p) =>
-      p.id === editingProduct.id
-        ? {
-            ...p,
-            name: newName.trim(),
-            price: Number(newPrice),
-            category: newCategory,
-            image: newImage.trim(),
-          }
-        : p
-    );
+    try {
+      const productData = {
+        name: newName.trim(),
+        price: Number(newPrice),
+        category: newCategory,
+        image: newImage.trim(),
+      };
 
-    await saveProducts(updated);
+      await updateDoc(
+        doc(db, "products", editingProduct.id),
+        productData
+      );
 
-    resetProductForm();
+      setProducts((current) =>
+        current.map((p) =>
+          p.id === editingProduct.id
+            ? {
+                ...p,
+                ...productData,
+              }
+            : p
+        )
+      );
 
-    Alert.alert(
-      "سەرکەوتوو بوو ✅",
-      "زانیاری بەرهەمەکە نوێ کرایەوە."
-    );
+      resetProductForm();
+
+      Alert.alert(
+        "سەرکەوتوو بوو ✅",
+        "بەرهەمەکە نوێ کرایەوە."
+      );
+    } catch (error) {
+      console.log(
+        "Update product error:",
+        error
+      );
+
+      Alert.alert(
+        "هەڵە",
+        "نەتوانرا بەرهەمەکە نوێ بکرێتەوە."
+      );
+    }
   };
 
   const deleteProduct = (product) => {
@@ -365,23 +416,39 @@ export default function App() {
           text: "بەڵێ، بیسڕەوە",
           style: "destructive",
           onPress: async () => {
-            const updated = products.filter(
-              (p) => p.id !== product.id
-            );
+            try {
+              await deleteDoc(
+                doc(db, "products", product.id)
+              );
 
-            await saveProducts(updated);
+              setProducts((current) =>
+                current.filter(
+                  (p) => p.id !== product.id
+                )
+              );
 
-            if (
-              editingProduct &&
-              editingProduct.id === product.id
-            ) {
-              resetProductForm();
+              if (
+                editingProduct &&
+                editingProduct.id === product.id
+              ) {
+                resetProductForm();
+              }
+
+              Alert.alert(
+                "سڕایەوە ✅",
+                "بەرهەمەکە سڕایەوە."
+              );
+            } catch (error) {
+              console.log(
+                "Delete product error:",
+                error
+              );
+
+              Alert.alert(
+                "هەڵە",
+                "نەتوانرا بەرهەمەکە بسڕدرێتەوە."
+              );
             }
-
-            Alert.alert(
-              "سڕایەوە ✅",
-              "بەرهەمەکە بە سەرکەوتوویی سڕایەوە."
-            );
           },
         },
       ]
@@ -413,10 +480,13 @@ export default function App() {
                 </Text>
 
                 <Text style={s.desc}>
-                  تەنها بە پاسۆرد دەتوانیت بەرهەمەکان بەڕێوە ببەیت.
+                  تەنها بە پاسۆرد دەتوانیت
+                  بەرهەمەکان بەڕێوە ببەیت.
                 </Text>
 
-                <Text style={s.label}>پاسۆرد</Text>
+                <Text style={s.label}>
+                  پاسۆرد
+                </Text>
 
                 <TextInput
                   value={password}
@@ -450,7 +520,7 @@ export default function App() {
                   </Text>
 
                   <Text style={s.imageText}>
-                    📷 بۆ زیادکردنی وێنە، لینکی وێنەکە لە خوارەوە دابنێ.
+                    📷 لینکی وێنەی بەرهەم دابنێ.
                   </Text>
 
                   <Text style={s.label}>
@@ -508,7 +578,9 @@ export default function App() {
                     style={s.cats}
                   >
                     {cats
-                      .filter((x) => x !== "هەموو")
+                      .filter(
+                        (x) => x !== "هەموو"
+                      )
                       .map((c) => (
                         <TouchableOpacity
                           key={c}
@@ -581,19 +653,31 @@ export default function App() {
                       style={s.adminProduct}
                     >
                       <Image
-                        source={{ uri: product.image }}
+                        source={{
+                          uri: product.image,
+                        }}
                         style={s.adminProductImage}
                       />
 
-                      <View style={s.adminProductInfo}>
+                      <View
+                        style={
+                          s.adminProductInfo
+                        }
+                      >
                         <Text
-                          style={s.adminProductName}
+                          style={
+                            s.adminProductName
+                          }
                           numberOfLines={2}
                         >
                           {product.name}
                         </Text>
 
-                        <Text style={s.adminProductPrice}>
+                        <Text
+                          style={
+                            s.adminProductPrice
+                          }
+                        >
                           {Number(
                             product.price
                           ).toLocaleString()}{" "}
@@ -601,7 +685,9 @@ export default function App() {
                         </Text>
 
                         <Text
-                          style={s.adminProductCategory}
+                          style={
+                            s.adminProductCategory
+                          }
                         >
                           {product.category}
                         </Text>
@@ -611,7 +697,9 @@ export default function App() {
                         <TouchableOpacity
                           style={s.editBtn}
                           onPress={() =>
-                            startEditProduct(product)
+                            startEditProduct(
+                              product
+                            )
                           }
                         >
                           <Text style={s.editText}>
@@ -620,12 +708,20 @@ export default function App() {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={s.deleteSmallBtn}
+                          style={
+                            s.deleteSmallBtn
+                          }
                           onPress={() =>
-                            deleteProduct(product)
+                            deleteProduct(
+                              product
+                            )
                           }
                         >
-                          <Text style={s.deleteSmallText}>
+                          <Text
+                            style={
+                              s.deleteSmallText
+                            }
+                          >
                             🗑️
                           </Text>
                         </TouchableOpacity>
@@ -646,7 +742,9 @@ export default function App() {
       <SafeAreaView style={s.safe}>
         <ScrollView>
           <TouchableOpacity
-            onPress={() => setShowCheckout(false)}
+            onPress={() =>
+              setShowCheckout(false)
+            }
           >
             <Text style={s.back}>
               ‹ گەڕانەوە بۆ سەبەت
@@ -732,726 +830,3 @@ export default function App() {
       </SafeAreaView>
     );
   }
-
-  if (selected) {
-    return (
-      <SafeAreaView style={s.safe}>
-        <ScrollView>
-          <TouchableOpacity
-            onPress={() => setSelected(null)}
-          >
-            <Text style={s.back}>
-              ‹ گەڕانەوە
-            </Text>
-          </TouchableOpacity>
-
-          <Image
-            source={{ uri: selected.image }}
-            style={s.hero}
-          />
-
-          <View style={s.pad}>
-            <Text style={s.title}>
-              {selected.name}
-            </Text>
-
-            <Text style={s.price}>
-              {Number(
-                selected.price
-              ).toLocaleString()}{" "}
-              IQD
-            </Text>
-
-            <Text style={s.desc}>
-              بەرهەمێکی جوان و کوالێتی بۆ ماڵەکەت.
-            </Text>
-
-            <TouchableOpacity
-              style={s.goldBtn}
-              onPress={() => addToCart(selected)}
-            >
-              <Text style={s.goldText}>
-                🛒 زیادکردن بۆ سەبەت
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
-        <Text style={s.brand}>ASYA</Text>
-        <Text style={s.sub}>Shwshawaty ASYA</Text>
-      </View>
-
-      {tab === "home" && (
-        <FlatList
-          data={filtered}
-          numColumns={2}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator
-          keyboardShouldPersistTaps="handled"
-          columnWrapperStyle={s.columnWrapper}
-          contentContainerStyle={s.grid}
-          ListHeaderComponent={
-            <>
-              <View style={s.banner}>
-                <Text style={s.bannerTitle}>
-                  بەخێربێیت بۆ ASYA
-                </Text>
-
-                <Text style={s.bannerSub}>
-                  جوانی بۆ ماڵەکەت
-                </Text>
-              </View>
-
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="بگەڕێ بۆ بەرهەم..."
-                placeholderTextColor="#777"
-                style={s.search}
-              />
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={s.cats}
-                contentContainerStyle={{
-                  paddingRight: 16,
-                }}
-              >
-                {cats.map((c) => (
-                  <TouchableOpacity
-                    key={c}
-                    onPress={() => setCategory(c)}
-                    style={[
-                      s.cat,
-                      category === c &&
-                        s.catActive,
-                    ]}
-                  >
-                    <Text
-                      style={
-                        category === c
-                          ? s.catTextActive
-                          : s.catText
-                      }
-                    >
-                      {c}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={s.section}>
-                بەرهەمەکان
-              </Text>
-            </>
-          }
-          ListEmptyComponent={
-            <Text style={s.empty}>
-              هیچ بەرهەمێک نەدۆزرایەوە.
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <View style={s.card}>
-              <TouchableOpacity
-                onPress={() => setSelected(item)}
-                activeOpacity={0.8}
-              >
-                <Image
-                  source={{ uri: item.image }}
-                  style={s.cardImg}
-                />
-
-                <Text
-                  style={s.cardName}
-                  numberOfLines={2}
-                >
-                  {item.name}
-                </Text>
-
-                <Text style={s.cardPrice}>
-                  {Number(
-                    item.price
-                  ).toLocaleString()}{" "}
-                  IQD
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={s.smallBtn}
-                onPress={() => addToCart(item)}
-                activeOpacity={0.8}
-              >
-                <Text style={s.smallBtnText}>
-                  + سەبەت
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        />
-      )}
-
-      {tab === "cart" && (
-        <ScrollView>
-          <View style={s.pad}>
-            <Text style={s.pageTitle}>
-              سەبەت 🛒
-            </Text>
-
-            {cart.length === 0 ? (
-              <Text style={s.empty}>
-                سەبەتەکەت بەتاڵە.
-              </Text>
-            ) : (
-              <>
-                {cart.map((p, i) => (
-                  <View
-                    style={s.row}
-                    key={`${p.id}-${i}`}
-                  >
-                    <Text style={s.rowName}>
-                      {p.name}
-                    </Text>
-
-                    <Text style={s.rowPrice}>
-                      {Number(
-                        p.price
-                      ).toLocaleString()}{" "}
-                      IQD
-                    </Text>
-
-                    <TouchableOpacity
-                      onPress={() =>
-                        removeFromCart(i)
-                      }
-                    >
-                      <Text style={s.remove}>
-                        ✕
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-
-                <View style={s.totalBox}>
-                  <Text style={s.totalLabel}>
-                    کۆی گشتی
-                  </Text>
-
-                  <Text style={s.totalPrice}>
-                    {total.toLocaleString()} IQD
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={s.goldBtn}
-                  onPress={openCheckout}
-                >
-                  <Text style={s.goldText}>
-                    📲 تەواوکردنی داواکاری
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </ScrollView>
-      )}
-
-      {tab === "profile" && (
-        <ScrollView>
-          <View style={s.pad}>
-            <Text style={s.pageTitle}>
-              پڕۆفایل 👤
-            </Text>
-
-            <Text style={s.desc}>
-              بەخێربێیت بۆ Shwshawaty ASYA.
-            </Text>
-
-            <TouchableOpacity
-              style={s.addProductBtn}
-              onPress={() => setShowAdmin(true)}
-            >
-              <Text style={s.addProductText}>
-                🔐 بەشی بەڕێوەبەر
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      )}
-
-      <View style={s.nav}>
-        <TouchableOpacity
-          onPress={() => setTab("home")}
-        >
-          <Text
-            style={
-              tab === "home"
-                ? s.navOn
-                : s.navOff
-            }
-          >
-            ⌂{"\n"}سەرەکی
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setTab("cart")}
-        >
-          <Text
-            style={
-              tab === "cart"
-                ? s.navOn
-                : s.navOff
-            }
-          >
-            🛒{"\n"}سەبەت ({cart.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setTab("profile")}
-        >
-          <Text
-            style={
-              tab === "profile"
-                ? s.navOn
-                : s.navOff
-            }
-          >
-            👤{"\n"}پڕۆفایل
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
-}
-
-const s = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#0f0f0f",
-  },
-
-  header: {
-    padding: 18,
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#292929",
-  },
-
-  brand: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#d7a52b",
-  },
-
-  sub: {
-    color: "#fff",
-    fontSize: 12,
-  },
-
-  banner: {
-    margin: 16,
-    padding: 22,
-    borderRadius: 18,
-    backgroundColor: "#1d1d1d",
-  },
-
-  bannerTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#e1b63e",
-  },
-
-  bannerSub: {
-    color: "#fff",
-    marginTop: 6,
-    fontSize: 16,
-  },
-
-  addProductBtn: {
-    marginTop: 20,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#d7a52b",
-    alignItems: "center",
-  },
-
-  addProductText: {
-    color: "#111",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-
-  search: {
-    marginHorizontal: 16,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 15,
-    color: "#111",
-  },
-
-  cats: {
-    paddingHorizontal: 16,
-    marginVertical: 12,
-  },
-
-  cat: {
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#555",
-    marginRight: 8,
-  },
-
-  catActive: {
-    backgroundColor: "#d7a52b",
-    borderColor: "#d7a52b",
-  },
-
-  catText: {
-    color: "#ddd",
-  },
-
-  catTextActive: {
-    color: "#111",
-    fontWeight: "700",
-  },
-
-  section: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-
-  grid: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 90,
-  },
-
-  columnWrapper: {
-    gap: 12,
-    marginBottom: 12,
-  },
-
-  card: {
-    backgroundColor: "#1c1c1c",
-    borderRadius: 14,
-    padding: 9,
-    flex: 1,
-    minWidth: 0,
-  },
-
-  cardImg: {
-    width: "100%",
-    height: 145,
-    borderRadius: 10,
-  },
-
-  cardName: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 8,
-  },
-
-  cardPrice: {
-    color: "#d7a52b",
-    fontWeight: "800",
-    marginTop: 5,
-  },
-
-  smallBtn: {
-    backgroundColor: "#d7a52b",
-    borderRadius: 9,
-    padding: 8,
-    marginTop: 8,
-    alignItems: "center",
-  },
-
-  smallBtnText: {
-    color: "#111",
-    fontWeight: "800",
-  },
-
-  nav: {
-    height: 68,
-    borderTopWidth: 1,
-    borderTopColor: "#333",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    backgroundColor: "#101010",
-  },
-
-  navOn: {
-    color: "#d7a52b",
-    textAlign: "center",
-    fontWeight: "800",
-  },
-
-  navOff: {
-    color: "#aaa",
-    textAlign: "center",
-  },
-
-  pad: {
-    padding: 18,
-  },
-
-  pageTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#fff",
-    marginBottom: 20,
-  },
-
-  empty: {
-    color: "#aaa",
-    fontSize: 17,
-    padding: 16,
-  },
-
-  row: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-
-  rowName: {
-    color: "#fff",
-    flex: 1,
-  },
-
-  rowPrice: {
-    color: "#d7a52b",
-    fontWeight: "700",
-  },
-
-  remove: {
-    color: "#ff7777",
-    fontSize: 18,
-  },
-
-  totalBox: {
-    marginTop: 18,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: "#1d1d1d",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  totalLabel: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  totalPrice: {
-    color: "#d7a52b",
-    fontSize: 20,
-    fontWeight: "800",
-  },
-
-  goldBtn: {
-    backgroundColor: "#d7a52b",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 20,
-  },
-
-  goldText: {
-    color: "#111",
-    fontWeight: "800",
-    fontSize: 16,
-  },
-
-  back: {
-    color: "#d7a52b",
-    fontSize: 18,
-    padding: 16,
-  },
-
-  hero: {
-    width: "100%",
-    height: 330,
-  },
-
-  title: {
-    fontSize: 25,
-    fontWeight: "800",
-    color: "#fff",
-  },
-
-  price: {
-    fontSize: 22,
-    color: "#d7a52b",
-    fontWeight: "800",
-    marginTop: 10,
-  },
-
-  desc: {
-    color: "#ccc",
-    fontSize: 16,
-    lineHeight: 26,
-    marginTop: 15,
-  },
-
-  label: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 14,
-    marginBottom: 7,
-  },
-
-  input: {
-    backgroundColor: "#fff",
-    color: "#111",
-    borderRadius: 12,
-    padding: 13,
-    fontSize: 15,
-  },
-
-  textArea: {
-    minHeight: 90,
-    textAlignVertical: "top",
-  },
-
-  preview: {
-    width: "100%",
-    height: 220,
-    borderRadius: 15,
-    marginTop: 10,
-  },
-
-  imageText: {
-    color: "#fff",
-    marginTop: 10,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  adminBox: {
-    backgroundColor: "#191919",
-    borderRadius: 15,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-
-  adminBoxTitle: {
-    color: "#d7a52b",
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 10,
-  },
-
-  adminListTitle: {
-    color: "#fff",
-    fontSize: 21,
-    fontWeight: "800",
-    marginTop: 30,
-    marginBottom: 12,
-  },
-
-  adminProduct: {
-    backgroundColor: "#1c1c1c",
-    borderRadius: 14,
-    padding: 10,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  adminProductImage: {
-    width: 75,
-    height: 75,
-    borderRadius: 10,
-  },
-
-  adminProductInfo: {
-    flex: 1,
-    marginHorizontal: 10,
-  },
-
-  adminProductName: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  adminProductPrice: {
-    color: "#d7a52b",
-    fontSize: 14,
-    fontWeight: "800",
-    marginTop: 4,
-  },
-
-  adminProductCategory: {
-    color: "#999",
-    fontSize: 12,
-    marginTop: 3,
-  },
-
-  adminActions: {
-    gap: 8,
-  },
-
-  editBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: "#2d2d2d",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  editText: {
-    fontSize: 19,
-  },
-
-  deleteSmallBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: "#351c1c",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  deleteSmallText: {
-    fontSize: 19,
-  },
-
-  cancelBtn: {
-    borderWidth: 1,
-    borderColor: "#555",
-    padding: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 10,
-  },
-
-  cancelText: {
-    color: "#ccc",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-});
