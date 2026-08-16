@@ -15,31 +15,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm install
 
-      - name: Fix Expo dependencies
-        run: npx expo install @react-native-async-storage/async-storage expo-image-picker
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-      - name: Setup EAS
-        run: npm install -g eas-cli
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
 
       - name: Build APK
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --profile preview --non-interactive --wait
-
-      - name: Download APK
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          eas build:list --platform android --status finished --limit 1 --json > build.json
-          APK_URL=$(node -e "const fs=require('fs'); const b=JSON.parse(fs.readFileSync('build.json')); console.log(b[0].artifacts.buildUrl)")
-          curl -L "$APK_URL" -o app.apk
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: shwshawaty-asya-apk
-          path: app.apk
+          path: android/app/build/outputs/apk/release/*.apk
