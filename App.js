@@ -350,18 +350,12 @@ export default function App() {
     }
 
     if (!newPrice.trim() || isNaN(Number(newPrice))) {
-      Alert.alert(
-        "هەڵە",
-        "نرخی بەرهەم بە ژمارە بنووسە."
-      );
+      Alert.alert("هەڵە", "نرخی بەرهەم بە ژمارە بنووسە.");
       return;
     }
 
     if (!newImage.trim()) {
-      Alert.alert(
-        "هەڵە",
-        "لینکی وێنەی بەرهەم بنووسە."
-      );
+      Alert.alert("هەڵە", "لینکی وێنەی بەرهەم بنووسە.");
       return;
     }
 
@@ -381,10 +375,7 @@ export default function App() {
       setProducts((current) =>
         current.map((p) =>
           p.id === editingProduct.id
-            ? {
-                ...p,
-                ...productData,
-              }
+            ? { ...p, ...productData }
             : p
         )
       );
@@ -396,10 +387,7 @@ export default function App() {
         "بەرهەمەکە نوێ کرایەوە."
       );
     } catch (error) {
-      console.log(
-        "Update product error:",
-        error
-      );
+      console.log("Update product error:", error);
 
       Alert.alert(
         "هەڵە",
@@ -485,8 +473,7 @@ export default function App() {
                 </Text>
 
                 <Text style={s.desc}>
-                  تەنها بە پاسۆرد دەتوانیت
-                  بەرهەمەکان بەڕێوە ببەیت.
+                  تەنها بە پاسۆرد دەتوانیت بەرهەمەکان بەڕێوە ببەیت.
                 </Text>
 
                 <Text style={s.label}>
@@ -522,10 +509,6 @@ export default function App() {
                     {editingProduct
                       ? "✏️ دەستکاریکردنی بەرهەم"
                       : "➕ زیادکردنی بەرهەم"}
-                  </Text>
-
-                  <Text style={s.imageText}>
-                    📷 لینکی وێنەی بەرهەم دابنێ.
                   </Text>
 
                   <Text style={s.label}>
@@ -583,19 +566,14 @@ export default function App() {
                     style={s.cats}
                   >
                     {cats
-                      .filter(
-                        (x) => x !== "هەموو"
-                      )
+                      .filter((x) => x !== "هەموو")
                       .map((c) => (
                         <TouchableOpacity
                           key={c}
-                          onPress={() =>
-                            setNewCategory(c)
-                          }
+                          onPress={() => setNewCategory(c)}
                           style={[
                             s.cat,
-                            newCategory === c &&
-                              s.catActive,
+                            newCategory === c && s.catActive,
                           ]}
                         >
                           <Text
@@ -658,42 +636,23 @@ export default function App() {
                       style={s.adminProduct}
                     >
                       <Image
-                        source={{
-                          uri: product.image,
-                        }}
+                        source={{ uri: product.image }}
                         style={s.adminProductImage}
                       />
 
-                      <View
-                        style={
-                          s.adminProductInfo
-                        }
-                      >
+                      <View style={s.adminProductInfo}>
                         <Text
-                          style={
-                            s.adminProductName
-                          }
+                          style={s.adminProductName}
                           numberOfLines={2}
                         >
                           {product.name}
                         </Text>
 
-                        <Text
-                          style={
-                            s.adminProductPrice
-                          }
-                        >
-                          {Number(
-                            product.price
-                          ).toLocaleString()}{" "}
-                          IQD
+                        <Text style={s.adminProductPrice}>
+                          {Number(product.price).toLocaleString()} IQD
                         </Text>
 
-                        <Text
-                          style={
-                            s.adminProductCategory
-                          }
-                        >
+                        <Text style={s.adminProductCategory}>
                           {product.category}
                         </Text>
                       </View>
@@ -702,9 +661,7 @@ export default function App() {
                         <TouchableOpacity
                           style={s.editBtn}
                           onPress={() =>
-                            startEditProduct(
-                              product
-                            )
+                            startEditProduct(product)
                           }
                         >
                           <Text style={s.editText}>
@@ -713,20 +670,12 @@ export default function App() {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={
-                            s.deleteSmallBtn
-                          }
+                          style={s.deleteSmallBtn}
                           onPress={() =>
-                            deleteProduct(
-                              product
-                            )
+                            deleteProduct(product)
                           }
                         >
-                          <Text
-                            style={
-                              s.deleteSmallText
-                            }
-                          >
+                          <Text style={s.deleteSmallText}>
                             🗑️
                           </Text>
                         </TouchableOpacity>
@@ -747,9 +696,7 @@ export default function App() {
       <SafeAreaView style={s.safe}>
         <ScrollView>
           <TouchableOpacity
-            onPress={() =>
-              setShowCheckout(false)
-            }
+            onPress={() => setShowCheckout(false)}
           >
             <Text style={s.back}>
               ‹ گەڕانەوە بۆ سەبەت
