@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-
 import {
   SafeAreaView,
   View,
@@ -15,7 +14,6 @@ import {
 } from "react-native";
 
 import { db } from "./firebase";
-
 import {
   collection,
   onSnapshot,
@@ -28,6 +26,9 @@ import {
 const ADMIN_PASSWORD = "tt69fu35T";
 const WHATSAPP = "9647718758585";
 
+// ⚠️ گرنگ: Collection ـەکەت لە Firestore بە Products ـە
+const PRODUCTS_COLLECTION = "Products";
+
 const cats = [
   "هەموو",
   "سێتی نان خواردن",
@@ -37,374 +38,165 @@ const cats = [
   "کاڵای ناوماڵ",
 ];
 
-/*
-  گرنگ:
-  Firestore ـەکەت هەردوو شێوەی ناوی خانەکان
-  پشتگیری دەکات:
-
-  Name / Category / Price / image
-
-  یان:
-
-  name / category / price / image
-*/
-
-const normalizeProduct = (item) => {
-  const data = item.data ? item.data() : item;
-
-  return {
-    id: item.id ?? data.id,
-
-    name:
-      data.name ??
-      data.Name ??
-      "بەرهەمێکی بێ ناو",
-
-    price: Number(
-      data.price ??
-      data.Price ??
-      0
-    ),
-
-    category:
-      data.category ??
-      data.Category ??
-      "کاڵای ناوماڵ",
-
-    image:
-      data.image ??
-      data.Image ??
-      "",
-  };
-};
-
-const initialProducts = [];
-
 export default function App() {
   const [tab, setTab] = useState("home");
+  const [category, setCategory] = useState("هەموو");
+  const [query, setQuery] = useState("");
 
-  const [category, setCategory] =
-    useState("هەموو");
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [query, setQuery] =
-    useState("");
+  const [cart, setCart] = useState([]);
+  const [selected, setSelected] = useState(null);
 
-  const [cart, setCart] =
-    useState([]);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminLogin, setAdminLogin] = useState(false);
+  const [password, setPassword] = useState("");
 
-  const [selected, setSelected] =
-    useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [newCategory, setNewCategory] = useState("کاڵای ناوماڵ");
+  const [newImage, setNewImage] = useState("");
 
-  const [products, setProducts] =
-    useState(initialProducts);
+  const [showCheckout, setShowCheckout] = useState(false);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerNote, setCustomerNote] = useState("");
 
-  const [showAdmin, setShowAdmin] =
-    useState(false);
-
-  const [adminLogin, setAdminLogin] =
-    useState(false);
-
-  const [password, setPassword] =
-    useState("");
-
-  const [editingProduct, setEditingProduct] =
-    useState(null);
-
-  const [newName, setNewName] =
-    useState("");
-
-  const [newPrice, setNewPrice] =
-    useState("");
-
-  const [newCategory, setNewCategory] =
-    useState("کاڵای ناوماڵ");
-
-  const [newImage, setNewImage] =
-    useState("");
-
-  const [showCheckout, setShowCheckout] =
-    useState(false);
-
-  const [customerName, setCustomerName] =
-    useState("");
-
-  const [customerPhone, setCustomerPhone] =
-    useState("");
-
-  const [customerAddress, setCustomerAddress] =
-    useState("");
-
-  const [customerNote, setCustomerNote] =
-    useState("");
-
-  /*
-   * ========================================
-   * FIRESTORE
-   * ========================================
-   *
-   * ئەمە هەردوو Collection دەخوێنێتەوە:
-   *
-   * Products
-   * products
-   *
-   * بۆیە ئەگەر بەرهەمەکانت لە هەر کامیان بن،
-   * دەبێت لە ئەپەکەدا دەرکەون.
-   */
-
+  // =========================
+  // FIRESTORE
+  // =========================
   useEffect(() => {
-    const productsRef1 =
-      collection(db, "Products");
+    const ref = collection(db, PRODUCTS_COLLECTION);
 
-    const productsRef2 =
-      collection(db, "products");
+    const unsubscribe = onSnapshot(
+      ref,
+      (snapshot) => {
+        const data = snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        }));
 
-    let productsFromUpper = [];
-    let productsFromLower = [];
+        console.log("PRODUCTS FROM FIRESTORE:", data.length);
+        setProducts(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.log("FIRESTORE ERROR:", error);
+        setLoading(false);
+        Alert.alert(
+          "هەڵەی Database",
+          "نەتوانرا بەرهەمەکان لە Firestore بخوێندرێنەوە."
+        );
+      }
+    );
 
-    const refreshProducts = () => {
-      const all = [
-        ...productsFromUpper,
-        ...productsFromLower,
-      ];
-
-      /*
-       * دووبارەبوونەوەی ID ـەکان لادەبەین
-       */
-
-      const unique = new Map();
-
-      all.forEach((product) => {
-        if (product.id) {
-          unique.set(product.id, product);
-        }
-      });
-
-      const finalProducts =
-        Array.from(unique.values());
-
-      console.log(
-        "✅ FIRESTORE PRODUCTS:",
-        finalProducts.length
-      );
-
-      setProducts(finalProducts);
-
-      setLoading(false);
-    };
-
-    const unsubscribeUpper =
-      onSnapshot(
-        productsRef1,
-        (snapshot) => {
-          productsFromUpper =
-            snapshot.docs.map(
-              normalizeProduct
-            );
-
-          refreshProducts();
-        },
-        (error) => {
-          console.log(
-            "Products collection error:",
-            error
-          );
-
-          setLoading(false);
-        }
-      );
-
-    const unsubscribeLower =
-      onSnapshot(
-        productsRef2,
-        (snapshot) => {
-          productsFromLower =
-            snapshot.docs.map(
-              normalizeProduct
-            );
-
-          refreshProducts();
-        },
-        (error) => {
-          console.log(
-            "products collection error:",
-            error
-          );
-
-          setLoading(false);
-        }
-      );
-
-    return () => {
-      unsubscribeUpper();
-      unsubscribeLower();
-    };
+    return unsubscribe;
   }, []);
 
-  /*
-   * ========================================
-   * SEARCH + CATEGORY
-   * ========================================
-   */
-
+  // =========================
+  // FILTER
+  // =========================
   const filtered = useMemo(() => {
-    const search =
-      query.trim().toLowerCase();
+    const search = query.trim().toLowerCase();
 
-    return products.filter((product) => {
+    return products.filter((p) => {
+      const name = String(p.Name ?? p.name ?? "");
+      const cat = String(p.Category ?? p.category ?? "");
+
       const categoryOK =
-        category === "هەموو" ||
-        product.category === category;
-
-      const name =
-        typeof product.name === "string"
-          ? product.name.toLowerCase()
-          : "";
+        category === "هەموو" || cat === category;
 
       const searchOK =
-        !search ||
-        name.includes(search);
+        !search || name.toLowerCase().includes(search);
 
-      return (
-        categoryOK &&
-        searchOK
-      );
+      return categoryOK && searchOK;
     });
-  }, [
-    products,
-    category,
-    query,
-  ]);
+  }, [products, category, query]);
 
-  /*
-   * ========================================
-   * CART
-   * ========================================
-   */
-
+  // =========================
+  // CART
+  // =========================
   const addToCart = (product) => {
-    setCart((current) => [
-      ...current,
-      product,
-    ]);
+    setCart((current) => [...current, product]);
 
     Alert.alert(
       "زیادکرا ✅",
-      `${product.name} خرایە ناو سەبەتەکە.`
+      `${product.Name ?? product.name} خرایە ناو سەبەتەکە.`
     );
   };
 
   const removeFromCart = (index) => {
     setCart((current) =>
-      current.filter(
-        (_, i) => i !== index
-      )
+      current.filter((_, i) => i !== index)
     );
   };
 
   const total = cart.reduce(
-    (sum, product) =>
-      sum +
-      Number(product.price || 0),
+    (sum, p) =>
+      sum + Number(p.Price ?? p.price ?? 0),
     0
   );
 
-  /*
-   * ========================================
-   * CHECKOUT
-   * ========================================
-   */
-
-  const openCheckout = () => {
-    if (cart.length === 0) {
-      Alert.alert(
-        "سەبەت بەتاڵە",
-        "سەرەتا بەرهەمێک زیاد بکە."
-      );
-
+  // =========================
+  // WHATSAPP
+  // =========================
+  const sendOrderToWhatsApp = async () => {
+    if (!customerName.trim()) {
+      Alert.alert("هەڵە", "ناوت بنووسە.");
       return;
     }
 
-    setShowCheckout(true);
+    if (!customerPhone.trim()) {
+      Alert.alert("هەڵە", "ژمارەی مۆبایلت بنووسە.");
+      return;
+    }
+
+    if (!customerAddress.trim()) {
+      Alert.alert("هەڵە", "ناونیشانت بنووسە.");
+      return;
+    }
+
+    const items = cart
+      .map((p, i) => {
+        const name = p.Name ?? p.name ?? "";
+        const price = Number(p.Price ?? p.price ?? 0);
+
+        return `${i + 1}. ${name} - ${price.toLocaleString()} IQD`;
+      })
+      .join("\n");
+
+    const message =
+      `🛍️ داواکاری نوێ - Shwshawaty ASYA\n\n` +
+      `👤 ناو: ${customerName}\n` +
+      `📞 ژمارە: ${customerPhone}\n` +
+      `📍 ناونیشان: ${customerAddress}\n\n` +
+      `📦 بەرهەمەکان:\n${items}\n\n` +
+      `💰 کۆی گشتی: ${total.toLocaleString()} IQD\n\n` +
+      `📝 تێبینی: ${customerNote.trim() || "نییە"}`;
+
+    const url =
+      `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`;
+
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("هەڵە", "WhatsApp نەکرایەوە.");
+    }
   };
 
-  const sendOrderToWhatsApp =
-    async () => {
-      if (!customerName.trim()) {
-        Alert.alert(
-          "هەڵە",
-          "ناوت بنووسە."
-        );
-        return;
-      }
-
-      if (!customerPhone.trim()) {
-        Alert.alert(
-          "هەڵە",
-          "ژمارەی مۆبایلت بنووسە."
-        );
-        return;
-      }
-
-      if (!customerAddress.trim()) {
-        Alert.alert(
-          "هەڵە",
-          "ناونیشانت بنووسە."
-        );
-        return;
-      }
-
-      const items = cart
-        .map(
-          (product, index) =>
-            `${index + 1}. ${
-              product.name
-            } - ${Number(
-              product.price
-            ).toLocaleString()} IQD`
-        )
-        .join("\n");
-
-      const message =
-        `🛍️ داواکاری نوێ - Shwshawaty ASYA\n\n` +
-        `👤 ناو: ${customerName}\n` +
-        `📞 ژمارە: ${customerPhone}\n` +
-        `📍 ناونیشان: ${customerAddress}\n\n` +
-        `📦 بەرهەمەکان:\n${items}\n\n` +
-        `💰 کۆی گشتی: ${total.toLocaleString()} IQD\n\n` +
-        `📝 تێبینی: ${
-          customerNote.trim() ||
-          "نییە"
-        }`;
-
-      const url =
-        `https://wa.me/${WHATSAPP}` +
-        `?text=${encodeURIComponent(
-          message
-        )}`;
-
-      try {
-        await Linking.openURL(url);
-      } catch (error) {
-        Alert.alert(
-          "هەڵە",
-          "WhatsApp نەکرایەوە."
-        );
-      }  // ==============================
+  // =========================
   // ADMIN
-  // ==============================
-
+  // =========================
   const loginAdmin = () => {
     if (password === ADMIN_PASSWORD) {
       setAdminLogin(true);
       setPassword("");
     } else {
-      Alert.alert(
-        "پاسۆرد هەڵەیە ❌",
-        "پاسۆردەکە هەڵەیە."
-      );
+      Alert.alert("پاسۆرد هەڵەیە ❌");
     }
   };
 
@@ -418,35 +210,74 @@ export default function App() {
 
   const addProduct = async () => {
     if (!newName.trim()) {
-      Alert.alert(
-        "هەڵە",
-        "ناوی بەرهەم بنووسە."
-      );
+      Alert.alert("هەڵە", "ناوی بەرهەم بنووسە.");
       return;
     }
 
-    if (
-      !newPrice.trim() ||
-      isNaN(Number(newPrice))
-    ) {
-      Alert.alert(
-        "هەڵە",
-        "نرخ بە ژمارە بنووسە."
-      );
+    if (!newPrice.trim() || isNaN(Number(newPrice))) {
+      Alert.alert("هەڵە", "نرخ بە ژمارە بنووسە.");
       return;
     }
 
     if (!newImage.trim()) {
-      Alert.alert(
-        "هەڵە",
-        "لینکی وێنەکە بنووسە."
-      );
+      Alert.alert("هەڵە", "لینکی وێنە بنووسە.");
       return;
     }
 
     try {
-      await addDoc(
-        collection(db, "Products"),
+      await addDoc(collection(db, PRODUCTS_COLLECTION), {
+        Name: newName.trim(),
+        Price: Number(newPrice),
+        Category: newCategory,
+        image: newImage.trim(),
+      });
+
+      resetProductForm();
+
+      Alert.alert(
+        "سەرکەوتوو بوو ✅",
+        "بەرهەمەکە زیاد کرا."
+      );
+    } catch (error) {
+      console.log(error);
+      Alert.alert("هەڵە", "نەتوانرا بەرهەم زیاد بکرێت.");
+    }
+  };
+
+  const startEditProduct = (product) => {
+    setEditingProduct(product);
+
+    setNewName(product.Name ?? product.name ?? "");
+    setNewPrice(
+      String(product.Price ?? product.price ?? "")
+    );
+    setNewCategory(
+      product.Category ?? product.category ?? "کاڵای ناوماڵ"
+    );
+    setNewImage(product.image ?? "");
+  };
+
+  const updateProduct = async () => {
+    if (!editingProduct) return;
+
+    if (!newName.trim()) {
+      Alert.alert("هەڵە", "ناوی بەرهەم بنووسە.");
+      return;
+    }
+
+    if (!newPrice.trim() || isNaN(Number(newPrice))) {
+      Alert.alert("هەڵە", "نرخ بە ژمارە بنووسە.");
+      return;
+    }
+
+    if (!newImage.trim()) {
+      Alert.alert("هەڵە", "لینکی وێنە بنووسە.");
+      return;
+    }
+
+    try {
+      await updateDoc(
+        doc(db, PRODUCTS_COLLECTION, editingProduct.id),
         {
           Name: newName.trim(),
           Price: Number(newPrice),
@@ -459,157 +290,47 @@ export default function App() {
 
       Alert.alert(
         "سەرکەوتوو بوو ✅",
-        "بەرهەمەکە زیاد کرا."
+        "بەرهەمەکە نوێ کرایەوە."
       );
     } catch (error) {
-      console.log(
-        "Add product error:",
-        error
-      );
-
+      console.log(error);
       Alert.alert(
         "هەڵە",
-        "نەتوانرا بەرهەمەکە زیاد بکرێت."
+        "نەتوانرا بەرهەمەکە نوێ بکرێتەوە."
       );
     }
   };
 
-  const startEditProduct = (
-    product
-  ) => {
-    setEditingProduct(product);
+  const deleteProduct = (product) => {
+    const name = product.Name ?? product.name ?? "";
 
-    setNewName(
-      product.name || ""
-    );
-
-    setNewPrice(
-      String(product.price || "")
-    );
-
-    setNewCategory(
-      product.category ||
-        "کاڵای ناوماڵ"
-    );
-
-    setNewImage(
-      product.image || ""
-    );
-  };
-
-  const updateProduct =
-    async () => {
-      if (!editingProduct) {
-        return;
-      }
-
-      if (!newName.trim()) {
-        Alert.alert(
-          "هەڵە",
-          "ناوی بەرهەم بنووسە."
-        );
-        return;
-      }
-
-      if (
-        !newPrice.trim() ||
-        isNaN(Number(newPrice))
-      ) {
-        Alert.alert(
-          "هەڵە",
-          "نرخ بە ژمارە بنووسە."
-        );
-        return;
-      }
-
-      if (!newImage.trim()) {
-        Alert.alert(
-          "هەڵە",
-          "لینکی وێنەکە بنووسە."
-        );
-        return;
-      }
-
-      try {
-        await updateDoc(
-          doc(
-            db,
-            "Products",
-            editingProduct.id
-          ),
-          {
-            Name: newName.trim(),
-            Price: Number(newPrice),
-            Category: newCategory,
-            image: newImage.trim(),
-          }
-        );
-
-        resetProductForm();
-
-        Alert.alert(
-          "سەرکەوتوو بوو ✅",
-          "بەرهەمەکە نوێ کرایەوە."
-        );
-      } catch (error) {
-        console.log(
-          "Update product error:",
-          error
-        );
-
-        Alert.alert(
-          "هەڵە",
-          "نەتوانرا بەرهەمەکە نوێ بکرێتەوە."
-        );
-      }
-    };
-
-  const deleteProduct = (
-    product
-  ) => {
     Alert.alert(
-      "سڕینەوەی بەرهەم",
-      `دڵنیایت دەتەوێت "${product.name}" بسڕیتەوە؟`,
+      "سڕینەوە",
+      `دڵنیایت دەتەوێت "${name}" بسڕیتەوە؟`,
       [
         {
           text: "نەخێر",
           style: "cancel",
         },
         {
-          text: "بەڵێ، بیسڕەوە",
+          text: "بەڵێ",
           style: "destructive",
-
           onPress: async () => {
             try {
               await deleteDoc(
-                doc(
-                  db,
-                  "Products",
-                  product.id
-                )
+                doc(db, PRODUCTS_COLLECTION, product.id)
               );
 
               if (
-                editingProduct &&
-                editingProduct.id ===
-                  product.id
+                editingProduct?.id === product.id
               ) {
                 resetProductForm();
               }
-
-              Alert.alert(
-                "سڕایەوە ✅",
-                "بەرهەمەکە سڕایەوە."
-              );
             } catch (error) {
-              console.log(
-                "Delete product error:",
-                error
-              );
-
+              console.log(error);
               Alert.alert(
                 "هەڵە",
-                "نەتوانرا بەرهەمەکە بسڕدرێتەوە."
+                "نەتوانرا بسڕدرێتەوە."
               );
             }
           },
@@ -618,10 +339,9 @@ export default function App() {
     );
   };
 
-  // ==============================
+  // =========================
   // ADMIN PAGE
-  // ==============================
-
+  // =========================
   if (showAdmin) {
     return (
       <SafeAreaView style={s.safe}>
@@ -630,7 +350,6 @@ export default function App() {
             onPress={() => {
               setShowAdmin(false);
               setAdminLogin(false);
-              setPassword("");
               resetProductForm();
             }}
           >
@@ -646,23 +365,16 @@ export default function App() {
                   🔐 بەشی بەڕێوەبەر
                 </Text>
 
-                <Text style={s.desc}>
-                  تەنها بە پاسۆرد دەتوانیت
-                  بەرهەمەکان بەڕێوە ببەیت.
-                </Text>
-
                 <Text style={s.label}>
                   پاسۆرد
                 </Text>
 
                 <TextInput
                   value={password}
-                  onChangeText={
-                    setPassword
-                  }
-                  placeholder="پاسۆرد"
-                  placeholderTextColor="#888"
+                  onChangeText={setPassword}
                   secureTextEntry
+                  placeholder="پاسۆرد"
+                  placeholderTextColor="#777"
                   style={s.input}
                 />
 
@@ -670,9 +382,7 @@ export default function App() {
                   style={s.goldBtn}
                   onPress={loginAdmin}
                 >
-                  <Text
-                    style={s.goldText}
-                  >
+                  <Text style={s.goldText}>
                     🔓 چوونەژوورەوە
                   </Text>
                 </TouchableOpacity>
@@ -683,30 +393,22 @@ export default function App() {
                   ⚙️ بەڕێوەبردنی بەرهەمەکان
                 </Text>
 
-                <View
-                  style={s.adminBox}
-                >
-                  <Text
-                    style={
-                      s.adminBoxTitle
-                    }
-                  >
+                <View style={s.adminBox}>
+                  <Text style={s.adminBoxTitle}>
                     {editingProduct
-                      ? "✏️ دەستکاریکردنی بەرهەم"
+                      ? "✏️ دەستکاریکردن"
                       : "➕ زیادکردنی بەرهەم"}
                   </Text>
 
                   <Text style={s.label}>
-                    لینکی وێنە
+                    وێنە
                   </Text>
 
                   <TextInput
                     value={newImage}
-                    onChangeText={
-                      setNewImage
-                    }
+                    onChangeText={setNewImage}
                     placeholder="https://..."
-                    placeholderTextColor="#888"
+                    placeholderTextColor="#777"
                     autoCapitalize="none"
                     keyboardType="url"
                     style={s.input}
@@ -714,9 +416,7 @@ export default function App() {
 
                   {newImage ? (
                     <Image
-                      source={{
-                        uri: newImage,
-                      }}
+                      source={{ uri: newImage }}
                       style={s.preview}
                     />
                   ) : null}
@@ -727,65 +427,51 @@ export default function App() {
 
                   <TextInput
                     value={newName}
-                    onChangeText={
-                      setNewName
-                    }
+                    onChangeText={setNewName}
                     placeholder="ناوی بەرهەم"
-                    placeholderTextColor="#888"
+                    placeholderTextColor="#777"
                     style={s.input}
                   />
 
                   <Text style={s.label}>
-                    نرخ بە دینار
+                    نرخ
                   </Text>
 
                   <TextInput
                     value={newPrice}
-                    onChangeText={
-                      setNewPrice
-                    }
+                    onChangeText={setNewPrice}
                     placeholder="50000"
-                    placeholderTextColor="#888"
+                    placeholderTextColor="#777"
                     keyboardType="numeric"
                     style={s.input}
                   />
 
                   <Text style={s.label}>
-                    جۆری بەرهەم
+                    جۆر
                   </Text>
 
                   <ScrollView
                     horizontal
-                    showsHorizontalScrollIndicator={
-                      false
-                    }
+                    showsHorizontalScrollIndicator={false}
                     style={s.cats}
                   >
                     {cats
-                      .filter(
-                        (x) =>
-                          x !==
-                          "هەموو"
-                      )
+                      .filter((x) => x !== "هەموو")
                       .map((c) => (
                         <TouchableOpacity
                           key={c}
                           onPress={() =>
-                            setNewCategory(
-                              c
-                            )
+                            setNewCategory(c)
                           }
                           style={[
                             s.cat,
-                            newCategory ===
-                              c &&
+                            newCategory === c &&
                               s.catActive,
                           ]}
                         >
                           <Text
                             style={
-                              newCategory ===
-                              c
+                              newCategory === c
                                 ? s.catTextActive
                                 : s.catText
                             }
@@ -796,184 +482,113 @@ export default function App() {
                       ))}
                   </ScrollView>
 
-                  {editingProduct ? (
-                    <>
-                      <TouchableOpacity
-                        style={
-                          s.goldBtn
-                        }
-                        onPress={
-                          updateProduct
-                        }
-                      >
-                        <Text
-                          style={
-                            s.goldText
-                          }
-                        >
-                          💾 پاشەکەوتکردنی گۆڕانکاری
-                        </Text>
-                      </TouchableOpacity>
+                  <TouchableOpacity
+                    style={s.goldBtn}
+                    onPress={
+                      editingProduct
+                        ? updateProduct
+                        : addProduct
+                    }
+                  >
+                    <Text style={s.goldText}>
+                      {editingProduct
+                        ? "💾 پاشەکەوتکردن"
+                        : "➕ زیادکردن"}
+                    </Text>
+                  </TouchableOpacity>
 
-                      <TouchableOpacity
-                        style={
-                          s.cancelBtn
-                        }
-                        onPress={
-                          resetProductForm
-                        }
-                      >
-                        <Text
-                          style={
-                            s.cancelText
-                          }
-                        >
-                          ✕ هەڵوەشاندنەوە
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
+                  {editingProduct && (
                     <TouchableOpacity
-                      style={
-                        s.goldBtn
-                      }
-                      onPress={
-                        addProduct
-                      }
+                      style={s.cancelBtn}
+                      onPress={resetProductForm}
                     >
-                      <Text
-                        style={
-                          s.goldText
-                        }
-                      >
-                        ➕ زیادکردنی بەرهەم
+                      <Text style={s.cancelText}>
+                        ✕ هەڵوەشاندنەوە
                       </Text>
                     </TouchableOpacity>
                   )}
                 </View>
 
-                <Text
-                  style={
-                    s.adminListTitle
-                  }
-                >
-                  📦 هەموو بەرهەمەکان (
-                  {products.length})
+                <Text style={s.adminListTitle}>
+                  📦 {products.length} بەرهەم
                 </Text>
 
-                {products.map(
-                  (product) => (
-                    <View
-                      key={
-                        product.id
-                      }
-                      style={
-                        s.adminProduct
-                      }
-                    >
-                      <Image
-                        source={{
-                          uri: product.image,
-                        }}
-                        style={
-                          s.adminProductImage
-                        }
-                      />
+                {products.map((product) => (
+                  <View
+                    key={product.id}
+                    style={s.adminProduct}
+                  >
+                    <Image
+                      source={{
+                        uri: product.image,
+                      }}
+                      style={s.adminProductImage}
+                    />
 
-                      <View
-                        style={
-                          s.adminProductInfo
-                        }
+                    <View style={s.adminProductInfo}>
+                      <Text
+                        style={s.adminProductName}
+                        numberOfLines={2}
                       >
-                        <Text
-                          style={
-                            s.adminProductName
-                          }
-                          numberOfLines={
-                            2
-                          }
-                        >
-                          {product.name}
-                        </Text>
+                        {product.Name ??
+                          product.name}
+                      </Text>
 
-                        <Text
-                          style={
-                            s.adminProductPrice
-                          }
-                        >
-                          {Number(
-                            product.price
-                          ).toLocaleString()}{" "}
-                          IQD
-                        </Text>
-
-                        <Text
-                          style={
-                            s.adminProductCategory
-                          }
-                        >
-                          {
-                            product.category
-                          }
-                        </Text>
-                      </View>
-
-                      <View
-                        style={
-                          s.adminActions
-                        }
+                      <Text
+                        style={s.adminProductPrice}
                       >
-                        <TouchableOpacity
-                          style={
-                            s.editBtn
-                          }
-                          onPress={() =>
-                            startEditProduct(
-                              product
-                            )
-                          }
-                        >
-                          <Text
-                            style={
-                              s.editText
-                            }
-                          >
-                            ✏️
-                          </Text>
-                        </TouchableOpacity>
+                        {Number(
+                          product.Price ??
+                            product.price ??
+                            0
+                        ).toLocaleString()}{" "}
+                        IQD
+                      </Text>
 
-                        <TouchableOpacity
-                          style={
-                            s.deleteSmallBtn
-                          }
-                          onPress={() =>
-                            deleteProduct(
-                              product
-                            )
-                          }
-                        >
-                          <Text
-                            style={
-                              s.deleteSmallText
-                            }
-                          >
-                            🗑️
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
+                      <Text
+                        style={s.adminProductCategory}
+                      >
+                        {product.Category ??
+                          product.category}
+                      </Text>
                     </View>
-                  )
-                )}
+
+                    <View style={s.adminActions}>
+                      <TouchableOpacity
+                        style={s.editBtn}
+                        onPress={() =>
+                          startEditProduct(product)
+                        }
+                      >
+                        <Text style={s.editText}>
+                          ✏️
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={s.deleteSmallBtn}
+                        onPress={() =>
+                          deleteProduct(product)
+                        }
+                      >
+                        <Text style={s.deleteSmallText}>
+                          🗑️
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
               </>
             )}
           </View>
         </ScrollView>
       </SafeAreaView>
     );
-  }  // ==============================
-  // CHECKOUT PAGE
-  // ==============================
+  }
 
+  // =========================
+  // CHECKOUT
+  // =========================
   if (showCheckout) {
     return (
       <SafeAreaView style={s.safe}>
@@ -992,26 +607,26 @@ export default function App() {
             </Text>
 
             <Text style={s.label}>
-              👤 ناوی تەواو
+              👤 ناو
             </Text>
 
             <TextInput
               value={customerName}
               onChangeText={setCustomerName}
-              placeholder="ناوت بنووسە"
-              placeholderTextColor="#888"
+              placeholder="ناوت"
+              placeholderTextColor="#777"
               style={s.input}
             />
 
             <Text style={s.label}>
-              📞 ژمارەی مۆبایل
+              📞 مۆبایل
             </Text>
 
             <TextInput
               value={customerPhone}
               onChangeText={setCustomerPhone}
               placeholder="07xxxxxxxxx"
-              placeholderTextColor="#888"
+              placeholderTextColor="#777"
               keyboardType="phone-pad"
               style={s.input}
             />
@@ -1024,7 +639,7 @@ export default function App() {
               value={customerAddress}
               onChangeText={setCustomerAddress}
               placeholder="شار، گەڕەک، شەقام..."
-              placeholderTextColor="#888"
+              placeholderTextColor="#777"
               multiline
               style={[s.input, s.textArea]}
             />
@@ -1036,8 +651,8 @@ export default function App() {
             <TextInput
               value={customerNote}
               onChangeText={setCustomerNote}
-              placeholder="ئەگەر تێبینییەکت هەیە..."
-              placeholderTextColor="#888"
+              placeholder="تێبینی"
+              placeholderTextColor="#777"
               multiline
               style={[s.input, s.textArea]}
             />
@@ -1057,7 +672,7 @@ export default function App() {
               onPress={sendOrderToWhatsApp}
             >
               <Text style={s.goldText}>
-                📲 ناردنی داواکاری بۆ WhatsApp
+                📲 ناردن بۆ WhatsApp
               </Text>
             </TouchableOpacity>
           </View>
@@ -1066,10 +681,9 @@ export default function App() {
     );
   }
 
-  // ==============================
-  // MAIN APP
-  // ==============================
-
+  // =========================
+  // MAIN
+  // =========================
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
@@ -1093,7 +707,7 @@ export default function App() {
               value={query}
               onChangeText={setQuery}
               placeholder="گەڕان بۆ بەرهەم..."
-              placeholderTextColor="#888"
+              placeholderTextColor="#777"
               style={s.searchInput}
             />
           </View>
@@ -1109,7 +723,8 @@ export default function App() {
                 onPress={() => setCategory(c)}
                 style={[
                   s.cat,
-                  category === c && s.catActive,
+                  category === c &&
+                    s.catActive,
                 ]}
               >
                 <Text
@@ -1139,50 +754,62 @@ export default function App() {
               }
               numColumns={2}
               contentContainerStyle={s.grid}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={s.card}
-                  onPress={() => setSelected(item)}
-                >
-                  <Image
-                    source={{
-                      uri: item.image,
-                    }}
-                    style={s.productImage}
-                  />
+              renderItem={({ item }) => {
+                const name =
+                  item.Name ??
+                  item.name ??
+                  "بێ ناو";
 
-                  <View style={s.cardBody}>
-                    <Text
-                      style={s.productName}
-                      numberOfLines={2}
-                    >
-                      {item.name}
-                    </Text>
+                const price = Number(
+                  item.Price ??
+                    item.price ??
+                    0
+                );
 
-                    <Text
-                      style={s.productPrice}
-                    >
-                      {Number(
-                        item.price
-                      ).toLocaleString()}{" "}
-                      IQD
-                    </Text>
+                return (
+                  <TouchableOpacity
+                    style={s.card}
+                    onPress={() =>
+                      setSelected(item)
+                    }
+                  >
+                    <Image
+                      source={{
+                        uri: item.image,
+                      }}
+                      style={s.productImage}
+                    />
 
-                    <TouchableOpacity
-                      style={s.addBtn}
-                      onPress={() =>
-                        addToCart(item)
-                      }
-                    >
+                    <View style={s.cardBody}>
                       <Text
-                        style={s.addBtnText}
+                        style={s.productName}
+                        numberOfLines={2}
                       >
-                        ➕ زیادکردن
+                        {name}
                       </Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              )}
+
+                      <Text
+                        style={s.productPrice}
+                      >
+                        {price.toLocaleString()} IQD
+                      </Text>
+
+                      <TouchableOpacity
+                        style={s.addBtn}
+                        onPress={() =>
+                          addToCart(item)
+                        }
+                      >
+                        <Text
+                          style={s.addBtnText}
+                        >
+                          ➕ زیادکردن
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
               ListEmptyComponent={
                 <View style={s.center}>
                   <Text style={s.empty}>
@@ -1196,109 +823,113 @@ export default function App() {
       )}
 
       {tab === "cart" && (
-        <View style={s.flex}>
-          <ScrollView
-            contentContainerStyle={s.pad}
-          >
-            <Text style={s.pageTitle}>
-              🛒 سەبەت
-            </Text>
+        <ScrollView
+          contentContainerStyle={s.pad}
+        >
+          <Text style={s.pageTitle}>
+            🛒 سەبەت
+          </Text>
 
-            {cart.length === 0 ? (
-              <View style={s.emptyCart}>
-                <Text style={s.emptyIcon}>
-                  🛒
+          {cart.length === 0 ? (
+            <View style={s.emptyCart}>
+              <Text style={s.emptyIcon}>
+                🛒
+              </Text>
+
+              <Text style={s.empty}>
+                سەبەتەکەت بەتاڵە.
+              </Text>
+
+              <TouchableOpacity
+                style={s.goldBtn}
+                onPress={() =>
+                  setTab("home")
+                }
+              >
+                <Text style={s.goldText}>
+                  بینینی بەرهەمەکان
                 </Text>
-
-                <Text style={s.empty}>
-                  سەبەتەکەت بەتاڵە.
-                </Text>
-
-                <TouchableOpacity
-                  style={s.goldBtn}
-                  onPress={() =>
-                    setTab("home")
-                  }
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              {cart.map((product, index) => (
+                <View
+                  key={`${product.id}-${index}`}
+                  style={s.cartItem}
                 >
-                  <Text style={s.goldText}>
-                    بینینی بەرهەمەکان
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                {cart.map(
-                  (product, index) => (
-                    <View
-                      key={`${product.id}-${index}`}
-                      style={s.cartItem}
+                  <Image
+                    source={{
+                      uri: product.image,
+                    }}
+                    style={s.cartImage}
+                  />
+
+                  <View style={s.cartInfo}>
+                    <Text
+                      style={s.cartName}
+                      numberOfLines={2}
                     >
-                      <Image
-                        source={{
-                          uri: product.image,
-                        }}
-                        style={s.cartImage}
-                      />
+                      {product.Name ??
+                        product.name}
+                    </Text>
 
-                      <View
-                        style={s.cartInfo}
-                      >
-                        <Text
-                          style={s.cartName}
-                          numberOfLines={2}
-                        >
-                          {product.name}
-                        </Text>
+                    <Text
+                      style={s.cartPrice}
+                    >
+                      {Number(
+                        product.Price ??
+                          product.price ??
+                          0
+                      ).toLocaleString()}{" "}
+                      IQD
+                    </Text>
+                  </View>
 
-                        <Text
-                          style={s.cartPrice}
-                        >
-                          {Number(
-                            product.price
-                          ).toLocaleString()}{" "}
-                          IQD
-                        </Text>
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() =>
-                          removeFromCart(
-                            index
-                          )
-                        }
-                      >
-                        <Text
-                          style={s.removeText}
-                        >
-                          🗑️
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )
-                )}
-
-                <View style={s.totalBox}>
-                  <Text style={s.totalLabel}>
-                    کۆی گشتی
-                  </Text>
-
-                  <Text style={s.totalPrice}>
-                    {total.toLocaleString()} IQD
-                  </Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      removeFromCart(index)
+                    }
+                  >
+                    <Text
+                      style={s.removeText}
+                    >
+                      🗑️
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+              ))}
 
-                <TouchableOpacity
-                  style={s.goldBtn}
-                  onPress={openCheckout}
-                >
-                  <Text style={s.goldText}>
-                    📦 تەواوکردنی داواکاری
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </ScrollView>
-        </View>
+              <View style={s.totalBox}>
+                <Text style={s.totalLabel}>
+                  کۆی گشتی
+                </Text>
+
+                <Text style={s.totalPrice}>
+                  {total.toLocaleString()} IQD
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={s.goldBtn}
+                onPress={() => {
+                  if (cart.length === 0) {
+                    Alert.alert(
+                      "سەبەت بەتاڵە"
+                    );
+                    return;
+                  }
+
+                  setShowCheckout(true);
+                }}
+              >
+                <Text style={s.goldText}>
+                  📦 تەواوکردنی داواکاری
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
       )}
 
       {tab === "profile" && (
@@ -1326,7 +957,9 @@ export default function App() {
 
             <TouchableOpacity
               style={s.goldBtn}
-              onPress={() => setTab("home")}
+              onPress={() =>
+                setTab("home")
+              }
             >
               <Text style={s.goldText}>
                 🛍️ دەستپێکردنی کڕین
@@ -1369,16 +1002,20 @@ export default function App() {
             />
 
             <Text style={s.modalTitle}>
-              {selected.name}
+              {selected.Name ??
+                selected.name}
             </Text>
 
             <Text style={s.modalCategory}>
-              {selected.category}
+              {selected.Category ??
+                selected.category}
             </Text>
 
             <Text style={s.modalPrice}>
               {Number(
-                selected.price
+                selected.Price ??
+                  selected.price ??
+                  0
               ).toLocaleString()}{" "}
               IQD
             </Text>
@@ -1401,12 +1038,13 @@ export default function App() {
       <View style={s.bottomNav}>
         <TouchableOpacity
           style={s.navItem}
-          onPress={() => setTab("home")}
+          onPress={() =>
+            setTab("home")
+          }
         >
           <Text style={s.navIcon}>
             🏠
           </Text>
-
           <Text style={s.navText}>
             سەرەکی
           </Text>
@@ -1414,7 +1052,9 @@ export default function App() {
 
         <TouchableOpacity
           style={s.navItem}
-          onPress={() => setTab("cart")}
+          onPress={() =>
+            setTab("cart")
+          }
         >
           <View>
             <Text style={s.navIcon}>
@@ -1437,12 +1077,13 @@ export default function App() {
 
         <TouchableOpacity
           style={s.navItem}
-          onPress={() => setTab("profile")}
+          onPress={() =>
+            setTab("profile")
+          }
         >
           <Text style={s.navIcon}>
             👤
           </Text>
-
           <Text style={s.navText}>
             پڕۆفایل
           </Text>
@@ -1452,18 +1093,14 @@ export default function App() {
   );
 }
 
-// ==============================
+// =========================
 // STYLES
-// ==============================
+// =========================
 
 const s = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#0b0b0b",
-  },
-
-  flex: {
-    flex: 1,
   },
 
   header: {
@@ -1472,7 +1109,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#111111",
+    backgroundColor: "#111",
     borderBottomWidth: 1,
     borderBottomColor: "#2b2b2b",
   },
@@ -1488,9 +1125,7 @@ const s = StyleSheet.create({
   },
 
   searchBox: {
-    marginHorizontal: 14,
-    marginTop: 12,
-    marginBottom: 5,
+    margin: 14,
   },
 
   searchInput: {
@@ -1501,14 +1136,12 @@ const s = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    fontSize: 15,
     textAlign: "right",
   },
 
   cats: {
     maxHeight: 55,
     paddingHorizontal: 10,
-    marginTop: 5,
   },
 
   cat: {
@@ -1540,9 +1173,8 @@ const s = StyleSheet.create({
   },
 
   grid: {
-    paddingHorizontal: 9,
-    paddingTop: 10,
-    paddingBottom: 90,
+    padding: 9,
+    paddingBottom: 100,
   },
 
   card: {
@@ -1591,7 +1223,6 @@ const s = StyleSheet.create({
 
   addBtnText: {
     color: "#111",
-    fontSize: 13,
     fontWeight: "800",
   },
 
@@ -1627,14 +1258,6 @@ const s = StyleSheet.create({
     marginBottom: 18,
   },
 
-  desc: {
-    color: "#aaa",
-    fontSize: 14,
-    lineHeight: 24,
-    textAlign: "right",
-    marginBottom: 20,
-  },
-
   label: {
     color: "#ddd",
     fontSize: 14,
@@ -1666,7 +1289,6 @@ const s = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: "center",
-    justifyContent: "center",
     marginTop: 16,
   },
 
@@ -1686,7 +1308,6 @@ const s = StyleSheet.create({
 
   cancelText: {
     color: "#ddd",
-    fontSize: 14,
     fontWeight: "700",
   },
 
@@ -1703,7 +1324,6 @@ const s = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
     textAlign: "right",
-    marginBottom: 8,
   },
 
   preview: {
@@ -1711,7 +1331,6 @@ const s = StyleSheet.create({
     height: 180,
     borderRadius: 12,
     marginTop: 10,
-    backgroundColor: "#222",
   },
 
   adminListTitle: {
@@ -1738,7 +1357,6 @@ const s = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 10,
-    backgroundColor: "#222",
   },
 
   adminProductInfo: {
@@ -1755,7 +1373,6 @@ const s = StyleSheet.create({
 
   adminProductPrice: {
     color: "#d4af37",
-    fontSize: 13,
     fontWeight: "800",
     textAlign: "right",
     marginTop: 4,
@@ -1803,8 +1420,7 @@ const s = StyleSheet.create({
     color: "#d4af37",
     fontSize: 16,
     fontWeight: "700",
-    paddingHorizontal: 16,
-    paddingVertical: 15,
+    padding: 16,
     textAlign: "right",
   },
 
@@ -1823,7 +1439,6 @@ const s = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 10,
-    backgroundColor: "#222",
   },
 
   cartInfo: {
@@ -1833,14 +1448,12 @@ const s = StyleSheet.create({
 
   cartName: {
     color: "#fff",
-    fontSize: 14,
     fontWeight: "700",
     textAlign: "right",
   },
 
   cartPrice: {
     color: "#d4af37",
-    fontSize: 14,
     fontWeight: "800",
     textAlign: "right",
     marginTop: 5,
@@ -1861,7 +1474,6 @@ const s = StyleSheet.create({
 
   totalLabel: {
     color: "#aaa",
-    fontSize: 14,
     textAlign: "right",
   },
 
@@ -1880,7 +1492,6 @@ const s = StyleSheet.create({
 
   emptyIcon: {
     fontSize: 55,
-    marginBottom: 10,
   },
 
   profileBox: {
@@ -1974,7 +1585,6 @@ const s = StyleSheet.create({
     width: "100%",
     height: 270,
     borderRadius: 13,
-    backgroundColor: "#222",
   },
 
   modalTitle: {
@@ -1987,7 +1597,6 @@ const s = StyleSheet.create({
 
   modalCategory: {
     color: "#999",
-    fontSize: 13,
     textAlign: "right",
     marginTop: 6,
   },
