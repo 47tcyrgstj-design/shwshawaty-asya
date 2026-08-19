@@ -28,6 +28,8 @@ import {
 const ADMIN_PASSWORD = "tt69fu35T";
 const WHATSAPP = "9647718758585";
 
+const PRODUCTS_COLLECTION = "Products";
+
 const cats = [
   "هەموو",
   "سێتی نان خواردن",
@@ -80,6 +82,44 @@ const initialProducts = [
   },
 ];
 
+/*
+  Firestore ـەکەی تۆ هەندێک document ـی کۆن
+  بە Name / Category / Price ـی گەورە هەیە.
+
+  ئەم function ـە هەردوو شێوازەکە یەکسان دەکات:
+  Name OR name
+  Category OR category
+  Price OR price
+  image
+*/
+const normalizeProduct = (item) => {
+  const data = item.data ? item.data() : item;
+
+  return {
+    id: item.id ?? data.id,
+
+    name:
+      data.name ??
+      data.Name ??
+      "بەرهەمێکی بێ ناو",
+
+    price:
+      data.price ??
+      data.Price ??
+      0,
+
+    category:
+      data.category ??
+      data.Category ??
+      "کاڵای ناوماڵ",
+
+    image:
+      data.image ??
+      data.Image ??
+      "",
+  };
+};
+
 export default function App() {
   const [tab, setTab] = useState("home");
   const [category, setCategory] = useState("هەموو");
@@ -110,23 +150,44 @@ export default function App() {
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerNote, setCustomerNote] = useState("");
 
+  /*
+    گرنگ:
+    Collection ـی ڕاستەقینەی Firestore:
+    Products
+  */
   useEffect(() => {
-    const productsRef = collection(db, "products");
+    const productsRef = collection(
+      db,
+      PRODUCTS_COLLECTION
+    );
 
     const unsubscribe = onSnapshot(
       productsRef,
       (snapshot) => {
-        const data = snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }));
+        const data = snapshot.docs.map((item) =>
+          normalizeProduct(item)
+        );
+
+        console.log(
+          "Firestore Products:",
+          data.length
+        );
 
         setProducts(data);
         setLoading(false);
       },
       (error) => {
-        console.log("Firebase realtime error:", error);
+        console.log(
+          "Firebase realtime error:",
+          error
+        );
+
         setLoading(false);
+
+        Alert.alert(
+          "هەڵەی Firebase",
+          "نەتوانرا بەرهەمەکان لە Firestore بخوێنرێنەوە."
+        );
       }
     );
 
@@ -154,7 +215,10 @@ export default function App() {
   }, [products, category, query]);
 
   const addToCart = (product) => {
-    setCart((current) => [...current, product]);
+    setCart((current) => [
+      ...current,
+      product,
+    ]);
 
     Alert.alert(
       "زیادکرا ✅",
@@ -193,12 +257,18 @@ export default function App() {
     }
 
     if (!customerPhone.trim()) {
-      Alert.alert("هەڵە", "ژمارەی مۆبایلت بنووسە.");
+      Alert.alert(
+        "هەڵە",
+        "ژمارەی مۆبایلت بنووسە."
+      );
       return;
     }
 
     if (!customerAddress.trim()) {
-      Alert.alert("هەڵە", "ناونیشانت بنووسە.");
+      Alert.alert(
+        "هەڵە",
+        "ناونیشانت بنووسە."
+      );
       return;
     }
 
@@ -206,7 +276,7 @@ export default function App() {
       .map(
         (p, i) =>
           `${i + 1}. ${p.name} - ${Number(
-            p.price
+            p.price || 0
           ).toLocaleString()} IQD`
       )
       .join("\n");
@@ -251,14 +321,19 @@ export default function App() {
   const resetProductForm = () => {
     setNewName("");
     setNewPrice("");
-    setNewCategory("کاڵای ناوماڵ");
+    setNewCategory(
+      "کاڵای ناوماڵ"
+    );
     setNewImage("");
     setEditingProduct(null);
   };
 
   const addProduct = async () => {
     if (!newName.trim()) {
-      Alert.alert("هەڵە", "ناوی بەرهەم بنووسە.");
+      Alert.alert(
+        "هەڵە",
+        "ناوی بەرهەم بنووسە."
+      );
       return;
     }
 
@@ -283,7 +358,10 @@ export default function App() {
 
     try {
       await addDoc(
-        collection(db, "products"),
+        collection(
+          db,
+          PRODUCTS_COLLECTION
+        ),
         {
           name: newName.trim(),
           price: Number(newPrice),
@@ -299,7 +377,10 @@ export default function App() {
         "بەرهەمەکە زیاد کرا."
       );
     } catch (error) {
-      console.log("Add product error:", error);
+      console.log(
+        "Add product error:",
+        error
+      );
 
       Alert.alert(
         "هەڵە",
@@ -310,10 +391,23 @@ export default function App() {
 
   const startEditProduct = (product) => {
     setEditingProduct(product);
-    setNewName(product.name);
-    setNewPrice(String(product.price));
-    setNewCategory(product.category);
-    setNewImage(product.image);
+
+    setNewName(
+      product.name || ""
+    );
+
+    setNewPrice(
+      String(product.price ?? "")
+    );
+
+    setNewCategory(
+      product.category ||
+        "کاڵای ناوماڵ"
+    );
+
+    setNewImage(
+      product.image || ""
+    );
   };
 
   const updateProduct = async () => {
@@ -350,7 +444,7 @@ export default function App() {
       await updateDoc(
         doc(
           db,
-          "products",
+          PRODUCTS_COLLECTION,
           editingProduct.id
         ),
         {
@@ -395,12 +489,17 @@ export default function App() {
           onPress: async () => {
             try {
               await deleteDoc(
-                doc(db, "products", product.id)
+                doc(
+                  db,
+                  PRODUCTS_COLLECTION,
+                  product.id
+                )
               );
 
               if (
                 editingProduct &&
-                editingProduct.id === product.id
+                editingProduct.id ===
+                  product.id
               ) {
                 resetProductForm();
               }
@@ -424,7 +523,9 @@ export default function App() {
         },
       ]
     );
-  };  if (showAdmin) {
+  };
+
+  if (showAdmin) {
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView>
@@ -459,7 +560,9 @@ export default function App() {
 
                 <TextInput
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={
+                    setPassword
+                  }
                   placeholder="پاسۆرد"
                   placeholderTextColor="#888"
                   secureTextEntry
@@ -482,7 +585,11 @@ export default function App() {
                 </Text>
 
                 <View style={s.adminBox}>
-                  <Text style={s.adminBoxTitle}>
+                  <Text
+                    style={
+                      s.adminBoxTitle
+                    }
+                  >
                     {editingProduct
                       ? "✏️ دەستکاریکردنی بەرهەم"
                       : "➕ زیادکردنی بەرهەم"}
@@ -494,7 +601,9 @@ export default function App() {
 
                   <TextInput
                     value={newImage}
-                    onChangeText={setNewImage}
+                    onChangeText={
+                      setNewImage
+                    }
                     placeholder="https://..."
                     placeholderTextColor="#888"
                     autoCapitalize="none"
@@ -504,7 +613,9 @@ export default function App() {
 
                   {newImage ? (
                     <Image
-                      source={{ uri: newImage }}
+                      source={{
+                        uri: newImage,
+                      }}
                       style={s.preview}
                     />
                   ) : null}
@@ -515,7 +626,9 @@ export default function App() {
 
                   <TextInput
                     value={newName}
-                    onChangeText={setNewName}
+                    onChangeText={
+                      setNewName
+                    }
                     placeholder="ناوی بەرهەم"
                     placeholderTextColor="#888"
                     style={s.input}
@@ -527,7 +640,9 @@ export default function App() {
 
                   <TextInput
                     value={newPrice}
-                    onChangeText={setNewPrice}
+                    onChangeText={
+                      setNewPrice
+                    }
                     placeholder="65000"
                     placeholderTextColor="#888"
                     keyboardType="numeric"
@@ -540,26 +655,35 @@ export default function App() {
 
                   <ScrollView
                     horizontal
-                    showsHorizontalScrollIndicator={false}
+                    showsHorizontalScrollIndicator={
+                      false
+                    }
                     style={s.cats}
                   >
                     {cats
-                      .filter((x) => x !== "هەموو")
+                      .filter(
+                        (x) =>
+                          x !== "هەموو"
+                      )
                       .map((c) => (
                         <TouchableOpacity
                           key={c}
                           onPress={() =>
-                            setNewCategory(c)
+                            setNewCategory(
+                              c
+                            )
                           }
                           style={[
                             s.cat,
-                            newCategory === c &&
+                            newCategory ===
+                              c &&
                               s.catActive,
                           ]}
                         >
                           <Text
                             style={
-                              newCategory === c
+                              newCategory ===
+                              c
                                 ? s.catTextActive
                                 : s.catText
                             }
@@ -573,100 +697,186 @@ export default function App() {
                   {editingProduct ? (
                     <>
                       <TouchableOpacity
-                        style={s.goldBtn}
-                        onPress={updateProduct}
+                        style={
+                          s.goldBtn
+                        }
+                        onPress={
+                          updateProduct
+                        }
                       >
-                        <Text style={s.goldText}>
+                        <Text
+                          style={
+                            s.goldText
+                          }
+                        >
                           💾 پاشەکەوتکردنی گۆڕانکاری
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={s.cancelBtn}
-                        onPress={resetProductForm}
+                        style={
+                          s.cancelBtn
+                        }
+                        onPress={
+                          resetProductForm
+                        }
                       >
-                        <Text style={s.cancelText}>
+                        <Text
+                          style={
+                            s.cancelText
+                          }
+                        >
                           ✕ هەڵوەشاندنەوە
                         </Text>
                       </TouchableOpacity>
                     </>
                   ) : (
                     <TouchableOpacity
-                      style={s.goldBtn}
-                      onPress={addProduct}
+                      style={
+                        s.goldBtn
+                      }
+                      onPress={
+                        addProduct
+                      }
                     >
-                      <Text style={s.goldText}>
+                      <Text
+                        style={
+                          s.goldText
+                        }
+                      >
                         ➕ زیادکردنی بەرهەم
                       </Text>
                     </TouchableOpacity>
                   )}
                 </View>
 
-                <Text style={s.adminListTitle}>
-                  📦 هەموو بەرهەمەکان
+                <Text
+                  style={
+                    s.adminListTitle
+                  }
+                >
+                  📦 هەموو بەرهەمەکان (
+                  {products.length})
                 </Text>
 
-                {products.map((product) => (
-                  <View
-                    key={product.id}
-                    style={s.adminProduct}
-                  >
-                    <Image
-                      source={{ uri: product.image }}
-                      style={s.adminProductImage}
-                    />
+                {products.map(
+                  (product) => (
+                    <View
+                      key={product.id}
+                      style={
+                        s.adminProduct
+                      }
+                    >
+                      {product.image ? (
+                        <Image
+                          source={{
+                            uri: product.image,
+                          }}
+                          style={
+                            s.adminProductImage
+                          }
+                        />
+                      ) : (
+                        <View
+                          style={[
+                            s.adminProductImage,
+                            {
+                              alignItems:
+                                "center",
+                              justifyContent:
+                                "center",
+                            },
+                          ]}
+                        >
+                          <Text>
+                            📦
+                          </Text>
+                        </View>
+                      )}
 
-                    <View style={s.adminProductInfo}>
-                      <Text
-                        style={s.adminProductName}
-                        numberOfLines={2}
-                      >
-                        {product.name}
-                      </Text>
-
-                      <Text
-                        style={s.adminProductPrice}
-                      >
-                        {Number(
-                          product.price
-                        ).toLocaleString()}{" "}
-                        IQD
-                      </Text>
-
-                      <Text
-                        style={s.adminProductCategory}
-                      >
-                        {product.category}
-                      </Text>
-                    </View>
-
-                    <View style={s.adminActions}>
-                      <TouchableOpacity
-                        style={s.editBtn}
-                        onPress={() =>
-                          startEditProduct(product)
-                        }
-                      >
-                        <Text style={s.editText}>
-                          ✏️
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={s.deleteSmallBtn}
-                        onPress={() =>
-                          deleteProduct(product)
+                      <View
+                        style={
+                          s.adminProductInfo
                         }
                       >
                         <Text
-                          style={s.deleteSmallText}
+                          style={
+                            s.adminProductName
+                          }
+                          numberOfLines={2}
                         >
-                          🗑️
+                          {product.name}
                         </Text>
-                      </TouchableOpacity>
+
+                        <Text
+                          style={
+                            s.adminProductPrice
+                          }
+                        >
+                          {Number(
+                            product.price ||
+                              0
+                          ).toLocaleString()}{" "}
+                          IQD
+                        </Text>
+
+                        <Text
+                          style={
+                            s.adminProductCategory
+                          }
+                        >
+                          {
+                            product.category
+                          }
+                        </Text>
+                      </View>
+
+                      <View
+                        style={
+                          s.adminActions
+                        }
+                      >
+                        <TouchableOpacity
+                          style={
+                            s.editBtn
+                          }
+                          onPress={() =>
+                            startEditProduct(
+                              product
+                            )
+                          }
+                        >
+                          <Text
+                            style={
+                              s.editText
+                            }
+                          >
+                            ✏️
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={
+                            s.deleteSmallBtn
+                          }
+                          onPress={() =>
+                            deleteProduct(
+                              product
+                            )
+                          }
+                        >
+                          <Text
+                            style={
+                              s.deleteSmallText
+                            }
+                          >
+                            🗑️
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  )
+                )}
               </>
             )}
           </View>
@@ -680,7 +890,9 @@ export default function App() {
       <SafeAreaView style={s.safe}>
         <ScrollView>
           <TouchableOpacity
-            onPress={() => setShowCheckout(false)}
+            onPress={() =>
+              setShowCheckout(false)
+            }
           >
             <Text style={s.back}>
               ‹ گەڕانەوە بۆ سەبەت
@@ -698,7 +910,9 @@ export default function App() {
 
             <TextInput
               value={customerName}
-              onChangeText={setCustomerName}
+              onChangeText={
+                setCustomerName
+              }
               placeholder="ناوت بنووسە"
               placeholderTextColor="#888"
               style={s.input}
@@ -710,7 +924,9 @@ export default function App() {
 
             <TextInput
               value={customerPhone}
-              onChangeText={setCustomerPhone}
+              onChangeText={
+                setCustomerPhone
+              }
               placeholder="07xxxxxxxxx"
               placeholderTextColor="#888"
               keyboardType="phone-pad"
@@ -723,11 +939,16 @@ export default function App() {
 
             <TextInput
               value={customerAddress}
-              onChangeText={setCustomerAddress}
+              onChangeText={
+                setCustomerAddress
+              }
               placeholder="شار، گەڕەک، شەقام..."
               placeholderTextColor="#888"
               multiline
-              style={[s.input, s.textArea]}
+              style={[
+                s.input,
+                s.textArea,
+              ]}
             />
 
             <Text style={s.label}>
@@ -736,28 +957,50 @@ export default function App() {
 
             <TextInput
               value={customerNote}
-              onChangeText={setCustomerNote}
+              onChangeText={
+                setCustomerNote
+              }
               placeholder="ئەگەر تێبینییەکت هەیە..."
               placeholderTextColor="#888"
               multiline
-              style={[s.input, s.textArea]}
+              style={[
+                s.input,
+                s.textArea,
+              ]}
             />
 
-            <View style={s.totalBox}>
-              <Text style={s.totalLabel}>
+            <View
+              style={s.totalBox}
+            >
+              <Text
+                style={
+                  s.totalLabel
+                }
+              >
                 کۆی گشتی
               </Text>
 
-              <Text style={s.totalPrice}>
-                {total.toLocaleString()} IQD
+              <Text
+                style={
+                  s.totalPrice
+                }
+              >
+                {total.toLocaleString()}{" "}
+                IQD
               </Text>
             </View>
 
             <TouchableOpacity
               style={s.goldBtn}
-              onPress={sendOrderToWhatsApp}
+              onPress={
+                sendOrderToWhatsApp
+              }
             >
-              <Text style={s.goldText}>
+              <Text
+                style={
+                  s.goldText
+                }
+              >
                 📲 ناردنی داواکاری بۆ WhatsApp
               </Text>
             </TouchableOpacity>
@@ -775,9 +1018,17 @@ export default function App() {
         </Text>
 
         <TouchableOpacity
-          onPress={() => setShowAdmin(true)}
+          onPress={() =>
+            setShowAdmin(true)
+          }
         >
-          <Text style={s.adminIcon}>⚙️</Text>
+          <Text
+            style={
+              s.adminIcon
+            }
+          >
+            ⚙️
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -786,25 +1037,35 @@ export default function App() {
           <View style={s.searchBox}>
             <TextInput
               value={query}
-              onChangeText={setQuery}
+              onChangeText={
+                setQuery
+              }
               placeholder="گەڕان بۆ بەرهەم..."
               placeholderTextColor="#888"
-              style={s.searchInput}
+              style={
+                s.searchInput
+              }
             />
           </View>
 
           <ScrollView
             horizontal
-            showsHorizontalScrollIndicator={false}
+            showsHorizontalScrollIndicator={
+              false
+            }
             style={s.cats}
           >
             {cats.map((c) => (
               <TouchableOpacity
                 key={c}
-                onPress={() => setCategory(c)}
+                onPress={() =>
+                  setCategory(c)
+                }
                 style={[
                   s.cat,
-                  category === c && s.catActive,
+                  category ===
+                    c &&
+                    s.catActive,
                 ]}
               >
                 <Text
@@ -821,8 +1082,14 @@ export default function App() {
           </ScrollView>
 
           {loading ? (
-            <View style={s.center}>
-              <Text style={s.loading}>
+            <View
+              style={s.center}
+            >
+              <Text
+                style={
+                  s.loading
+                }
+              >
                 چاوەڕێ بکە...
               </Text>
             </View>
@@ -830,42 +1097,93 @@ export default function App() {
             <FlatList
               data={filtered}
               keyExtractor={(item) =>
-                String(item.id)
+                String(
+                  item.id
+                )
               }
               numColumns={2}
-              contentContainerStyle={s.grid}
-              renderItem={({ item }) => (
+              contentContainerStyle={
+                s.grid
+              }
+              renderItem={({
+                item,
+              }) => (
                 <TouchableOpacity
                   style={s.card}
-                  onPress={() => setSelected(item)}
+                  onPress={() =>
+                    setSelected(
+                      item
+                    )
+                  }
                 >
-                  <Image
-                    source={{ uri: item.image }}
-                    style={s.productImage}
-                  />
+                  {item.image ? (
+                    <Image
+                      source={{
+                        uri: item.image,
+                      }}
+                      style={
+                        s.productImage
+                      }
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        s.productImage,
+                        {
+                          alignItems:
+                            "center",
+                          justifyContent:
+                            "center",
+                        },
+                      ]}
+                    >
+                      <Text>
+                        📦
+                      </Text>
+                    </View>
+                  )}
 
-                  <View style={s.cardBody}>
+                  <View
+                    style={
+                      s.cardBody
+                    }
+                  >
                     <Text
-                      style={s.productName}
+                      style={
+                        s.productName
+                      }
                       numberOfLines={2}
                     >
                       {item.name}
                     </Text>
 
-                    <Text style={s.productPrice}>
+                    <Text
+                      style={
+                        s.productPrice
+                      }
+                    >
                       {Number(
-                        item.price
+                        item.price ||
+                          0
                       ).toLocaleString()}{" "}
                       IQD
                     </Text>
 
                     <TouchableOpacity
-                      style={s.addBtn}
+                      style={
+                        s.addBtn
+                      }
                       onPress={() =>
-                        addToCart(item)
+                        addToCart(
+                          item
+                        )
                       }
                     >
-                      <Text style={s.addBtnText}>
+                      <Text
+                        style={
+                          s.addBtnText
+                        }
+                      >
                         ➕ زیادکردن
                       </Text>
                     </TouchableOpacity>
@@ -873,8 +1191,16 @@ export default function App() {
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                <View style={s.center}>
-                  <Text style={s.empty}>
+                <View
+                  style={
+                    s.center
+                  }
+                >
+                  <Text
+                    style={
+                      s.empty
+                    }
+                  >
                     هیچ بەرهەمێک نەدۆزرایەوە.
                   </Text>
                 </View>
@@ -883,87 +1209,189 @@ export default function App() {
           )}
         </>
       )}
+
       {tab === "cart" && (
         <View style={s.flex}>
-          <ScrollView contentContainerStyle={s.pad}>
-            <Text style={s.pageTitle}>
+          <ScrollView
+            contentContainerStyle={
+              s.pad
+            }
+          >
+            <Text
+              style={
+                s.pageTitle
+              }
+            >
               🛒 سەبەت
             </Text>
 
             {cart.length === 0 ? (
-              <View style={s.emptyCart}>
-                <Text style={s.emptyIcon}>
+              <View
+                style={
+                  s.emptyCart
+                }
+              >
+                <Text
+                  style={
+                    s.emptyIcon
+                  }
+                >
                   🛒
                 </Text>
 
-                <Text style={s.empty}>
+                <Text
+                  style={
+                    s.empty
+                  }
+                >
                   سەبەتەکەت بەتاڵە.
                 </Text>
 
                 <TouchableOpacity
-                  style={s.goldBtn}
-                  onPress={() => setTab("home")}
+                  style={
+                    s.goldBtn
+                  }
+                  onPress={() =>
+                    setTab(
+                      "home"
+                    )
+                  }
                 >
-                  <Text style={s.goldText}>
+                  <Text
+                    style={
+                      s.goldText
+                    }
+                  >
                     بینینی بەرهەمەکان
                   </Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
-                {cart.map((product, index) => (
-                  <View
-                    key={`${product.id}-${index}`}
-                    style={s.cartItem}
-                  >
-                    <Image
-                      source={{ uri: product.image }}
-                      style={s.cartImage}
-                    />
-
-                    <View style={s.cartInfo}>
-                      <Text
-                        style={s.cartName}
-                        numberOfLines={2}
-                      >
-                        {product.name}
-                      </Text>
-
-                      <Text style={s.cartPrice}>
-                        {Number(
-                          product.price
-                        ).toLocaleString()}{" "}
-                        IQD
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity
-                      onPress={() =>
-                        removeFromCart(index)
+                {cart.map(
+                  (
+                    product,
+                    index
+                  ) => (
+                    <View
+                      key={`${product.id}-${index}`}
+                      style={
+                        s.cartItem
                       }
                     >
-                      <Text style={s.removeText}>
-                        🗑️
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                      {product.image ? (
+                        <Image
+                          source={{
+                            uri: product.image,
+                          }}
+                          style={
+                            s.cartImage
+                          }
+                        />
+                      ) : (
+                        <View
+                          style={[
+                            s.cartImage,
+                            {
+                              alignItems:
+                                "center",
+                              justifyContent:
+                                "center",
+                            },
+                          ]}
+                        >
+                          <Text>
+                            📦
+                          </Text>
+                        </View>
+                      )}
 
-                <View style={s.totalBox}>
-                  <Text style={s.totalLabel}>
+                      <View
+                        style={
+                          s.cartInfo
+                        }
+                      >
+                        <Text
+                          style={
+                            s.cartName
+                          }
+                          numberOfLines={
+                            2
+                          }
+                        >
+                          {
+                            product.name
+                          }
+                        </Text>
+
+                        <Text
+                          style={
+                            s.cartPrice
+                          }
+                        >
+                          {Number(
+                            product.price ||
+                              0
+                          ).toLocaleString()}{" "}
+                          IQD
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        onPress={() =>
+                          removeFromCart(
+                            index
+                          )
+                        }
+                      >
+                        <Text
+                          style={
+                            s.removeText
+                          }
+                        >
+                          🗑️
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )
+                )}
+
+                <View
+                  style={
+                    s.totalBox
+                  }
+                >
+                  <Text
+                    style={
+                      s.totalLabel
+                    }
+                  >
                     کۆی گشتی
                   </Text>
 
-                  <Text style={s.totalPrice}>
-                    {total.toLocaleString()} IQD
+                  <Text
+                    style={
+                      s.totalPrice
+                    }
+                  >
+                    {total.toLocaleString()}{" "}
+                    IQD
                   </Text>
                 </View>
 
                 <TouchableOpacity
-                  style={s.goldBtn}
-                  onPress={openCheckout}
+                  style={
+                    s.goldBtn
+                  }
+                  onPress={
+                    openCheckout
+                  }
                 >
-                  <Text style={s.goldText}>
+                  <Text
+                    style={
+                      s.goldText
+                    }
+                  >
                     📦 تەواوکردنی داواکاری
                   </Text>
                 </TouchableOpacity>
@@ -974,40 +1402,84 @@ export default function App() {
       )}
 
       {tab === "profile" && (
-        <ScrollView contentContainerStyle={s.pad}>
-          <Text style={s.pageTitle}>
+        <ScrollView
+          contentContainerStyle={
+            s.pad
+          }
+        >
+          <Text
+            style={
+              s.pageTitle
+            }
+          >
             👤 Shwshawaty ASYA
           </Text>
 
-          <View style={s.profileBox}>
-            <Text style={s.profileLogo}>
+          <View
+            style={
+              s.profileBox
+            }
+          >
+            <Text
+              style={
+                s.profileLogo
+              }
+            >
               ASYA
             </Text>
 
-            <Text style={s.profileTitle}>
+            <Text
+              style={
+                s.profileTitle
+              }
+            >
               بەخێربێیت بۆ Shwshawaty ASYA
             </Text>
 
-            <Text style={s.profileText}>
+            <Text
+              style={
+                s.profileText
+              }
+            >
               بۆ بینینی بەرهەمەکان، سەبەت و ناردنی
               داواکاری لەگەڵمان بەکاربهێنە.
             </Text>
 
             <TouchableOpacity
-              style={s.goldBtn}
-              onPress={() => setTab("home")}
+              style={
+                s.goldBtn
+              }
+              onPress={() =>
+                setTab(
+                  "home"
+                )
+              }
             >
-              <Text style={s.goldText}>
+              <Text
+                style={
+                  s.goldText
+                }
+              >
                 🛍️ دەستپێکردنی کڕین
               </Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={s.adminProfileBtn}
-            onPress={() => setShowAdmin(true)}
+            style={
+              s.adminProfileBtn
+            }
+            onPress={() =>
+              setShowAdmin(
+                true
+              )
+            }
           >
-            <Text style={s.adminProfileText}>
+            <Text
+              style={
+                s.adminProfileText
+              }
+            >
               ⚙️ بەشی بەڕێوەبەر
             </Text>
           </TouchableOpacity>
@@ -1015,43 +1487,116 @@ export default function App() {
       )}
 
       {selected && (
-        <View style={s.modalOverlay}>
-          <View style={s.modal}>
+        <View
+          style={
+            s.modalOverlay
+          }
+        >
+          <View
+            style={
+              s.modal
+            }
+          >
             <TouchableOpacity
-              style={s.close}
-              onPress={() => setSelected(null)}
+              style={
+                s.close
+              }
+              onPress={() =>
+                setSelected(
+                  null
+                )
+              }
             >
-              <Text style={s.closeText}>✕</Text>
+              <Text
+                style={
+                  s.closeText
+                }
+              >
+                ✕
+              </Text>
             </TouchableOpacity>
 
-            <Image
-              source={{ uri: selected.image }}
-              style={s.modalImage}
-            />
+            {selected.image ? (
+              <Image
+                source={{
+                  uri: selected.image,
+                }}
+                style={
+                  s.modalImage
+                }
+              />
+            ) : (
+              <View
+                style={[
+                  s.modalImage,
+                  {
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "center",
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 40,
+                  }}
+                >
+                  📦
+                </Text>
+              </View>
+            )}
 
-            <Text style={s.modalTitle}>
-              {selected.name}
+            <Text
+              style={
+                s.modalTitle
+              }
+            >
+              {
+                selected.name
+              }
             </Text>
 
-            <Text style={s.modalCategory}>
-              {selected.category}
+            <Text
+              style={
+                s.modalCategory
+              }
+            >
+              {
+                selected.category
+              }
             </Text>
 
-            <Text style={s.modalPrice}>
+            <Text
+              style={
+                s.modalPrice
+              }
+            >
               {Number(
-                selected.price
+                selected.price ||
+                  0
               ).toLocaleString()}{" "}
               IQD
             </Text>
 
             <TouchableOpacity
-              style={s.goldBtn}
+              style={
+                s.goldBtn
+              }
               onPress={() => {
-                addToCart(selected);
-                setSelected(null);
+                addToCart(
+                  selected
+                );
+                setSelected(
+                  null
+                );
               }}
             >
-              <Text style={s.goldText}>
+              <Text
+                style={
+                  s.goldText
+                }
+              >
                 🛒 زیادکردن بۆ سەبەت
               </Text>
             </TouchableOpacity>
@@ -1059,51 +1604,114 @@ export default function App() {
         </View>
       )}
 
-      <View style={s.bottomNav}>
+      <View
+        style={
+          s.bottomNav
+        }
+      >
         <TouchableOpacity
-          style={s.navItem}
-          onPress={() => setTab("home")}
+          style={
+            s.navItem
+          }
+          onPress={() =>
+            setTab("home")
+          }
         >
-          <Text style={s.navIcon}>🏠</Text>
-          <Text style={s.navText}>
+          <Text
+            style={
+              s.navIcon
+            }
+          >
+            🏠
+          </Text>
+
+          <Text
+            style={
+              s.navText
+            }
+          >
             سەرەکی
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={s.navItem}
-          onPress={() => setTab("cart")}
+          style={
+            s.navItem
+          }
+          onPress={() =>
+            setTab("cart")
+          }
         >
           <View>
-            <Text style={s.navIcon}>🛒</Text>
+            <Text
+              style={
+                s.navIcon
+              }
+            >
+              🛒
+            </Text>
 
-            {cart.length > 0 && (
-              <View style={s.badge}>
-                <Text style={s.badgeText}>
-                  {cart.length}
+            {cart.length >
+              0 && (
+              <View
+                style={
+                  s.badge
+                }
+              >
+                <Text
+                  style={
+                    s.badgeText
+                  }
+                >
+                  {
+                    cart.length
+                  }
                 </Text>
               </View>
             )}
           </View>
 
-          <Text style={s.navText}>
+          <Text
+            style={
+              s.navText
+            }
+          >
             سەبەت
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={s.navItem}
-          onPress={() => setTab("profile")}
+          style={
+            s.navItem
+          }
+          onPress={() =>
+            setTab(
+              "profile"
+            )
+          }
         >
-          <Text style={s.navIcon}>👤</Text>
-          <Text style={s.navText}>
+          <Text
+            style={
+              s.navIcon
+            }
+          >
+            👤
+          </Text>
+
+          <Text
+            style={
+              s.navText
+            }
+          >
             پڕۆفایل
           </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
-}const s = StyleSheet.create({
+}
+
+const s = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#0b0b0b",
@@ -1584,7 +2192,8 @@ export default function App() {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.82)",
+    backgroundColor:
+      "rgba(0,0,0,0.82)",
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
