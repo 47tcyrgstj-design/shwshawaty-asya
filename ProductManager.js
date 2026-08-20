@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { addDoc, collection } from "firebase/firestore";
-import { db } from "./firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { storage } from "./firebase";
+
+import { db, storage } from "./firebase";
+
 import {
   SafeAreaView,
   ScrollView,
@@ -23,31 +24,52 @@ export default function ProductManager({ onBack }) {
   const [imageUrl, setImageUrl] = useState("");
   const [imageUri, setImageUri] = useState("");
 
-const pickImage = async () => {
-  const permission =
-    await ImagePicker.requestMediaLibraryPermissionsAsync();
+  // هەڵبژاردنی وێنە لە گەلەری
+  const pickImage = async () => {
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-  if (!permission.granted) {
-    Alert.alert(
-      "ڕێگەپێدان پێویستە",
-      "تکایە ڕێگە بدە بە ئەپەکە دەستی بە گەلەری بگات."
-    );
-    return;
-  }
+    if (!permission.granted) {
+      Alert.alert(
+        "ڕێگەپێدان پێویستە",
+        "تکایە ڕێگە بدە بە ئەپەکە دەستی بە گەلەری بگات."
+      );
+      return;
+    }
 
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images"],
-    allowsEditing: true,
-    quality: 0.8,
-  });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.8,
+    });
 
-  if (!result.canceled) {
-    setImageUri(result.assets[0].uri);
-    setImageUrl("");
-  }
-};
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+      setImageUrl("");
+    }
+  };
 
-const saveProduct = async () => {
+  // Upload کردنی وێنە بۆ Firebase Storage
+  const uploadImage = async () => {
+    if (!imageUri) {
+      return "";
+    }
+
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+
+    const filename = `products/${Date.now()}.jpg`;
+    const storageRef = ref(storage, filename);
+
+    await uploadBytes(storageRef, blob);
+
+    const downloadURL = await getDownloadURL(storageRef);
+
+    return downloadURL;
+  };
+
+  // زیادکردنی بەرهەم
+  const saveProduct = async () => {
     if (!name.trim()) {
       Alert.alert("هەڵە", "تکایە ناوی بەرهەم بنووسە.");
       return;
@@ -64,28 +86,42 @@ const saveProduct = async () => {
     }
 
     try {
-  const uploadedImage = await uploadImage();
+      const uploadedImage = await uploadImage();
 
-  await addDoc(collection(db, "products"), {
-    name: name.trim(),
-    price: Number(price),
-    category: category.trim(),
-    stock: Number(stock) || 0,
-    image: uploadedImage || imageUrl.trim(),
-    createdAt: Date.now(),
-  });
+      await addDoc(collection(db, "products"), {
+        name: name.trim(),
+        price: Number(price),
+        category: category.trim(),
+        stock: Number(stock) || 0,
+        image: uploadedImage || imageUrl.trim(),
+        createdAt: Date.now(),
+      });
 
-  Alert.alert("سەرکەوتوو بوو ✅", "بەرهەمەکە زیاد کرا.");
-} catch (error) {
-  console.log(error);
-  Alert.alert("هەڵە", "بەرهەمەکە زیاد نەکرا.");
-}
+      Alert.alert(
+        "سەرکەوتوو بوو ✅",
+        "بەرهەمەکە بە سەرکەوتوویی زیاد کرا."
+      );
+
+      setName("");
+      setPrice("");
+      setCategory("");
+      setStock("");
+      setImageUrl("");
+      setImageUri("");
+    } catch (error) {
+      console.log("SAVE PRODUCT ERROR:", error);
+
+      Alert.alert(
+        "هەڵە",
+        "بەرهەمەکە زیاد نەکرا. تکایە Firebase ـەکە بپشکنە."
+      );
+    }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        
+
         <TouchableOpacity onPress={onBack}>
           <Text style={styles.back}>‹ گەڕانەوە</Text>
         </TouchableOpacity>
@@ -170,21 +206,16 @@ const saveProduct = async () => {
           />
 
           {imageUri || imageUrl ? (
-  <Image
-    source={{ uri: imageUri || imageUrl }}
-    style={styles.preview}
-    resizeMode="cover"
-  />
-) : null}
+            <Image
+              source={{ uri: imageUri || imageUrl }}
+              style={styles.preview}
+              resizeMode="cover"
+            />
+          ) : null}
 
           <TouchableOpacity
             style={styles.galleryButton}
             onPress={pickImage}
-              Alert.alert(
-                "گەلەری",
-                "لە هەنگاوی دواتر گەلەریی مۆبایل بە Firebase Storage پەیوەست دەکەین."
-              )
-            }
           >
             <Text style={styles.galleryText}>
               📷 هەڵبژاردن لە گەلەری
@@ -201,6 +232,7 @@ const saveProduct = async () => {
           </TouchableOpacity>
 
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
