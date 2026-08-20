@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {import ProductManager from "./ProductManager";
+import ProductManager from "./ProductManager";
   SafeAreaView,
   View,
   Text,
