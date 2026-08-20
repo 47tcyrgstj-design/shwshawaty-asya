@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
+import {import ProductManager from "./ProductManager";
   SafeAreaView,
   View,
   Text,
@@ -229,7 +229,7 @@ function Transaction({ name, date, value, income }) {
    MANAGER
 ========================= */
 
-function ManagerPanel({ onBack }) {
+function ManagerPanel({ onBack, onAddProduct }) {
   const items = [
     ["📦", "بەڕێوبەرایەتی بەرهەمەکان"],
     ["➕", "زیادکردنی بەرهەم"],
@@ -275,12 +275,16 @@ function ManagerPanel({ onBack }) {
             <TouchableOpacity
               key={index}
               style={styles.menuButton}
-              onPress={() =>
-                Alert.alert(
-                  title,
-                  "ئەم بەشە لە قۆناغی داهاتوودا چالاک دەکرێت."
-                )
-              }
+              onPress={() => {
+  if (title === "زیادکردنی بەرهەم") {
+    onAddProduct();
+  } else {
+    Alert.alert(
+      title,
+      "ئەم بەشە لە قۆناغی داهاتوودا چالاک دەکرێت."
+    );
+  }
+}}
             >
               <Text style={styles.menuIcon}>{icon}</Text>
               <Text style={styles.menuText}>{title}</Text>
@@ -475,9 +479,14 @@ export default function App() {
     );
   }
 
-  if (screen === "manager") {
-    return <ManagerPanel onBack={() => setScreen("main")} />;
-  }
+if (screen === "addProduct") {
+  return (
+    <ManagerPanel
+      onBack={() => setScreen("main")}
+      onAddProduct={() => setScreen("addProduct")}
+    />
+  );
+}
 
   /* =========================
      PRODUCT DETAILS
